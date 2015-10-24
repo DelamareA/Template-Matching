@@ -3,11 +3,13 @@
 
 #include <QList>
 #include <opencv2/opencv.hpp>
+#include "opencv2/imgproc/imgproc.hpp"
+#include "template.h"
 
 class Output{
 
     public:
-        Output(QString imagePath, QString functionName);
+        Output(QString imagePath, QString functionName, Template *tem);
         void display();
         void addData(unsigned int x, unsigned int y, unsigned int num);
         QString toString();
@@ -18,6 +20,7 @@ class Output{
         QList<unsigned int> listNum;
         cv::Mat baseImage;
         QString functionName;
+        Template* tem;
 
 };
 

@@ -4,7 +4,6 @@
 #include <QTextStream>
 #include <QDebug>
 #include "functions.h"
-#include "template.h"
 #include "output.h"
 
 int templateMatching(QString imagePath, QString templatesPath, int function, QString outputPath);
@@ -14,8 +13,8 @@ int main(int argc, char *argv[]){
         return 1;
     }*/
 
-    QString imagePath = "pic.png";  //QString(argv[1]);
-    QString templatesPath = "pic.png";  //QString(argv[2]);
+    QString imagePath = "pic2.png";  //QString(argv[1]);
+    QString templatesPath = "templates/";  //QString(argv[2]);
     int function = 0;  //QString(argv[3]).toInt();
     QString outputPath = "output.txt";  //QString(argv[4]);
 
@@ -28,7 +27,7 @@ int templateMatching(QString imagePath, QString templatesPath, int function, QSt
         return 2;
     }
 
-    Template templateNumers(templatesPath);
+    Template* templateNumers = new Template(templatesPath);
 
     Output* out = 0;
 
@@ -39,8 +38,6 @@ int templateMatching(QString imagePath, QString templatesPath, int function, QSt
     }
 
     out->display();
-
-    qDebug() << out->toString();
 
     QFile file(outputPath);
     if (file.open(QIODevice::WriteOnly)){

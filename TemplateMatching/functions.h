@@ -6,7 +6,9 @@
 #include "output.h"
 #include "template.h"
 
-Output *basicTemplateMatching(QString imagePath, Template tem);
+Output* templateMatching(QString imagePath, Template *tem, int method, QString methodName);
+
+Output* basicTemplateMatching(QString imagePath, Template *tem);
 
 #endif // FUNCTIONS
 
