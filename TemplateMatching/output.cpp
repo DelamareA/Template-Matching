@@ -1,8 +1,8 @@
 #include "output.h"
 
 
-Output::Output(QString imagePath, QString functionName, Template* tem){
-    baseImage = cv::imread(imagePath.toStdString());
+Output::Output(cv::Mat image, QString functionName, Template* tem){
+    cvtColor(image, baseImage, CV_GRAY2RGB);
     this->functionName = functionName;
     this->tem = tem;
 }
@@ -31,7 +31,7 @@ void Output::display(){
 
         rectangle(baseImage, p1, p2, cv::Scalar(0,0,255));
 
-        putText(baseImage, QString::number(listNum[i]).toStdString(), p3, cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(0,0,255));
+        putText(baseImage, QString::number(listNum[i]).toStdString(), p3, cv::FONT_HERSHEY_SIMPLEX, 1.7, cv::Scalar(0,0,255));
     }
 
 
@@ -41,7 +41,7 @@ void Output::display(){
 }
 
 QString Output::toString(){
-    QString out = "1@";
+    QString out = "1@"; // for now one frame
 
     out += QString::number(listX.size());
     out += '%';

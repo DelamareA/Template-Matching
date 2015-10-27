@@ -9,7 +9,7 @@
 class Output{
 
     public:
-        Output(QString imagePath, QString functionName, Template *tem);
+        Output(cv::Mat, QString functionName, Template *tem);
         void display();
         void addData(unsigned int x, unsigned int y, unsigned int num);
         QString toString();

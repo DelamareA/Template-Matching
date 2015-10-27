@@ -13,8 +13,8 @@ int main(int argc, char *argv[]){
         return 1;
     }*/
 
-    QString imagePath = "pic2.png";  //QString(argv[1]);
-    QString templatesPath = "templates/";  //QString(argv[2]);
+    QString imagePath = "screenshot2.png";  //QString(argv[1]);
+    QString templatesPath = "templatesNumber/";  //QString(argv[2]);
     int function = 0;  //QString(argv[3]).toInt();
     QString outputPath = "output.txt";  //QString(argv[4]);
 
