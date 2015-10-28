@@ -10,5 +10,7 @@ Output* templateMatching(QString imagePath, Template *tem, int method, QString m
 
 Output* basicTemplateMatching(QString imagePath, Template *tem);
 
+int colorDistance(cv::Vec3b c1, cv::Vec3b c2);
+
 #endif // FUNCTIONS
 
