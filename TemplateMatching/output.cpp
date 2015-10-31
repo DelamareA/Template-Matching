@@ -31,7 +31,7 @@ void Output::display(){
 
         rectangle(baseImage, p1, p2, cv::Scalar(0,0,255));
 
-        putText(baseImage, QString::number(listNum[i]).toStdString(), p3, cv::FONT_HERSHEY_SIMPLEX, 1.7, cv::Scalar(0,0,255));
+        putText(baseImage, QString::number(listNum[i]).toStdString(), p3, cv::FONT_HERSHEY_SCRIPT_SIMPLEX, 1, cv::Scalar(0,0,255));
     }
 
 

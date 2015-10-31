@@ -7,23 +7,24 @@
 #include "output.h"
 #include "configuration.h"
 
-int templateMatching(QString imagePath, QString templatesPath, int function, QString outputPath, QString configPath);
+int templateMatching(QString imagePath, QString templatesPath, int function, QString outputPath, QString configPath, QString backgroundPath);
 
 int main(int argc, char *argv[]){
-    /*if (argc != 6){
+    /*if (argc != 7){
         return 1;
     }*/
 
     QString imagePath = "screenshot2.png";  //QString(argv[1]);
-    QString templatesPath = "templatesNumber/";  //QString(argv[2]);
+    QString templatesPath = "templatesNumber2/";  //QString(argv[2]);
     int function = 0;  //QString(argv[3]).toInt();
     QString outputPath = "output.txt";  //QString(argv[4]);
     QString configPath = "config.txt";  //QString(argv[5]);
+    QString backgroundPath = "background.png";  //QString(argv[6]);
 
-    return templateMatching(imagePath, templatesPath, function, outputPath, configPath);
+    return templateMatching(imagePath, templatesPath, function, outputPath, configPath, backgroundPath);
 }
 
-int templateMatching(QString imagePath, QString templatesPath, int function, QString outputPath, QString configPath){
+int templateMatching(QString imagePath, QString templatesPath, int function, QString outputPath, QString configPath, QString backgroundPath){
 
     if (function < 0 || function >= FUNCTIONS_COUNT){
         return 2;
@@ -37,7 +38,7 @@ int templateMatching(QString imagePath, QString templatesPath, int function, QSt
 
     switch (function){
         default:
-            out = basicTemplateMatching(imagePath, templateNumers);
+            out = basicTemplateMatching(imagePath, templateNumers, backgroundPath);
         break;
     }
 

@@ -3,9 +3,9 @@
 cv::Vec3b Configuration::numberColor;
 int Configuration::maxNumberColorDistance = 0;
 int Configuration::minDistanceBetweenNumbers = 0;
+int Configuration::maxBackgroundColorDistance = 0;
 
 Configuration::Configuration(){
-
 }
 
 void Configuration::setConfigFromFile(QString path){
@@ -30,6 +30,9 @@ void Configuration::setConfigFromFile(QString path){
 
             QStringList l2 = list[2].split(':');
             Configuration::minDistanceBetweenNumbers = l2[1].toInt();
+
+            QStringList l3 = list[3].split(':');
+            Configuration::maxBackgroundColorDistance = l3[1].toInt();
        }
        else {
            qDebug() << "Config file incorrect";
@@ -47,6 +50,11 @@ cv::Vec3b Configuration::getNumberColor(){
 int Configuration::getMaxNumberColorDistance(){
     return Configuration::maxNumberColorDistance;
 }
+
+int Configuration::getMaxBackgroundColorDistance(){
+    return Configuration::maxBackgroundColorDistance;
+}
+
 
 int Configuration::getMinDistanceBetweenNumbers(){
     return Configuration::minDistanceBetweenNumbers;
