@@ -14,8 +14,8 @@ int main(int argc, char *argv[]){
         return 1;
     }*/
 
-    QString imagePath = "screenshot2.png";  //QString(argv[1]);
-    QString templatesPath = "templatesNumber2/";  //QString(argv[2]);
+    QString imagePath = "screenshot3.png";  //QString(argv[1]);
+    QString templatesPath = "templatesNumber4/";  //QString(argv[2]);
     int function = 0;  //QString(argv[3]).toInt();
     QString outputPath = "output.txt";  //QString(argv[4]);
     QString configPath = "config.txt";  //QString(argv[5]);

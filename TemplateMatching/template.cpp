@@ -1,4 +1,5 @@
 #include "template.h"
+#include "functions.h"
 #include <QDebug>
 
 Template::Template(QString path){
@@ -22,6 +23,31 @@ Template::Template(QString path){
         else if (images[i].rows != height){
             qDebug() << "Error : all templates must be the same size";
         }
+
+        std::vector<std::vector<cv::Point> > templateContours;
+        std::vector<cv::Vec4i> hierarchy;
+
+        findContours(images[i].clone(), templateContours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
+
+        if (templateContours.size() == 0){
+            qDebug() << "Error, template doesn't have a contour";
+        }
+        else {
+            cv::Moments imageMoments = moments(templateContours[0], false);
+            massCenters[i] = cv::Point2f(imageMoments.m10/imageMoments.m00 , imageMoments.m01/imageMoments.m00);
+        }
+
+        cv::Mat firstHalf = cv::Mat(images[i].clone(), cv::Rect(0, 0, images[i].cols/2, images[i].rows));
+        cv::Mat secondHalf = cv::Mat(images[i].clone(), cv::Rect(images[i].cols/2, 0, images[i].cols/2, images[i].rows));
+
+        halfMassCenters[i][0] = getMassCenterFromImage(firstHalf);
+        halfMassCenters[i][1] = getMassCenterFromImage(secondHalf);
+
+        cv::Mat firstHalfHori = cv::Mat(images[i].clone(), cv::Rect(0, 0, images[i].cols, images[i].rows/2));
+        cv::Mat secondHalfHori = cv::Mat(images[i].clone(), cv::Rect(0, images[i].rows/2, images[i].cols, images[i].rows/2));
+
+        halfMassCentersHori[i][0] = getMassCenterFromImage(firstHalfHori);
+        halfMassCentersHori[i][1] = getMassCenterFromImage(secondHalfHori);
     }
 }
 
@@ -35,6 +61,18 @@ int Template::getHeigth(){
 
 cv::Mat Template::getTemplate(int i){
     return images[i];
+}
+
+cv::Point2f Template::getMassCenter(int i){
+    return massCenters[i];
+}
+
+cv::Point2f Template::getHalfMassCenter(int half, int i){
+    return halfMassCenters[i][half];
+}
+
+cv::Point2f Template::getHalfMassCenterHori(int half, int i){
+    return halfMassCentersHori[i][half];
 }
 
 cv::Mat Template::getSingleImage(){
