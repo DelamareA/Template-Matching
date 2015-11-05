@@ -9,8 +9,8 @@
 class Output{
 
     public:
-        Output(cv::Mat, QString functionName, Template *tem);
-        void display();
+        Output(cv::Mat, Template *tem);
+        cv::Mat getImage();
         void addData(unsigned int x, unsigned int y, unsigned int num);
         QString toString();
 
@@ -19,7 +19,6 @@ class Output{
         QList<unsigned int> listY;
         QList<unsigned int> listNum;
         cv::Mat baseImage;
-        QString functionName;
         Template* tem;
 
 };

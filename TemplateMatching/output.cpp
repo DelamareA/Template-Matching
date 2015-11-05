@@ -1,9 +1,8 @@
 #include "output.h"
 
 
-Output::Output(cv::Mat image, QString functionName, Template* tem){
-    cvtColor(image, baseImage, CV_GRAY2RGB);
-    this->functionName = functionName;
+Output::Output(cv::Mat image, Template* tem){
+    baseImage = image;
     this->tem = tem;
 }
 
@@ -13,7 +12,7 @@ void Output::addData(unsigned int x, unsigned int y, unsigned int num){
     listNum.append(num);
 }
 
-void Output::display(){
+cv::Mat Output::getImage(){
 
     for (int i = 0; i < listX.size(); i++){
         cv::Point p1;
@@ -34,10 +33,7 @@ void Output::display(){
         putText(baseImage, QString::number(listNum[i]).toStdString(), p3, cv::FONT_HERSHEY_SCRIPT_SIMPLEX, 1, cv::Scalar(0,0,255));
     }
 
-
-    cv::namedWindow(functionName.toStdString());
-    cv::imshow(functionName.toStdString(), baseImage);
-    cv::waitKey(10000);
+    return baseImage;
 }
 
 QString Output::toString(){

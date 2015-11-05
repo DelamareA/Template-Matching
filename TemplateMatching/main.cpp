@@ -7,44 +7,87 @@
 #include "output.h"
 #include "configuration.h"
 
-int templateMatching(QString imagePath, QString templatesPath, int function, QString outputPath, QString configPath, QString backgroundPath);
+int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bool isVideo, QString templatesPath, QString outputPath, QString configPath, QString backgroundPath);
 
 int main(int argc, char *argv[]){
-    /*if (argc != 7){
-        return 1;
-    }*/
 
-    QString imagePath = "screenshot3.png";  //QString(argv[1]);
-    QString templatesPath = "templatesNumber4/";  //QString(argv[2]);
-    int function = 0;  //QString(argv[3]).toInt();
-    QString outputPath = "output.txt";  //QString(argv[4]);
-    QString configPath = "config.txt";  //QString(argv[5]);
-    QString backgroundPath = "background.png";  //QString(argv[6]);
+    bool isVideo = false;
+    QString imagePath = "screenshot2.png";
+    QString videoPath = "shortVideo.mp4";
+    QString outputVideoPath = "output.avi";
+    QString templatesPath = "templatesNumber4/";
+    QString outputPath = "output.txt";
+    QString configPath = "config.txt";
+    QString backgroundPath = "background.png";
 
-    return templateMatching(imagePath, templatesPath, function, outputPath, configPath, backgroundPath);
+    return loadAndRun(imagePath, videoPath, outputVideoPath, isVideo, templatesPath, outputPath, configPath, backgroundPath);
 }
 
-int templateMatching(QString imagePath, QString templatesPath, int function, QString outputPath, QString configPath, QString backgroundPath){
+int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bool isVideo, QString templatesPath, QString outputPath, QString configPath, QString backgroundPath){
 
-    if (function < 0 || function >= FUNCTIONS_COUNT){
-        return 2;
-    }
-
-    Template* templateNumers = new Template(templatesPath);
-
+    Template* templateNumbers = new Template(templatesPath);
     Configuration::setConfigFromFile(configPath);
+    cv::Mat background = cv::imread(backgroundPath.toStdString());
 
     Output* out = 0;
 
-    switch (function){
-        default:
-            out = basicTemplateMatching(imagePath, templateNumers, backgroundPath);
-        break;
+    if (isVideo){
+        cv::VideoCapture inputVideo(videoPath.toStdString());
+        if (!inputVideo.isOpened()){
+            qDebug() << "Could not open video";
+            return -1;
+        }
+
+        cv::Size size = cv::Size((int) inputVideo.get(CV_CAP_PROP_FRAME_WIDTH), (int) inputVideo.get(CV_CAP_PROP_FRAME_HEIGHT));
+
+        cv::VideoWriter outputVideo;
+        outputVideo.open(outputVideoPath.toStdString(), -1, inputVideo.get(CV_CAP_PROP_FPS)/12, size, true);
+
+        if (!outputVideo.isOpened()){
+            qDebug() << "Could not open video output";
+            return -1;
+        }
+
+        cv::Mat image;
+        inputVideo >> image;
+        int count = 0;
+
+        while (!image.empty()){
+            if (image.rows != background.rows || image.cols != background.cols){
+                qDebug() << "Image and background have not the same size";
+            }
+
+            out = basicTemplateMatching(image, templateNumbers, background);
+            outputVideo << out->getImage();
+
+            delete out;
+
+            qDebug() << count;
+
+            for (int i = 0; i < 4; i++){
+                inputVideo >> image;
+                count++;
+            }
+        }
+
+    }
+    else {
+        cv::Mat image = cv::imread(imagePath.toStdString());
+
+        if (image.rows != background.rows || image.cols != background.cols){
+            qDebug() << "Image and background have not the same size";
+        }
+
+        out = basicTemplateMatching(image, templateNumbers, background);
+
+        cv::namedWindow("Output");
+        cv::imshow("Output", out->getImage());
+        cv::waitKey(10000);
+
+        delete out;
     }
 
-    out->display();
-
-    QFile file(outputPath);
+    /*QFile file(outputPath);
     if (file.open(QIODevice::WriteOnly)){
         QTextStream stream(&file);
         stream << out->toString() << endl;
@@ -52,8 +95,7 @@ int templateMatching(QString imagePath, QString templatesPath, int function, QSt
     }
     else {
         qDebug() << "Cannot open " + outputPath;
-    }
-
+    }*/
 
     return 0;
 }

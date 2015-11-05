@@ -5,15 +5,7 @@
 #include "configuration.h"
 #include <vector>
 
-Output* templateMatching(QString imagePath, Template* tem, int method, QString methodName, QString backgroundPath){
-    cv::Mat image = cv::imread(imagePath.toStdString());
-    cv::Mat background = cv::imread(backgroundPath.toStdString());
-
-
-    if (image.rows != background.rows || image.cols != background.cols){
-        qDebug() << "Image and background have not the same size";
-    }
-
+Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT], cv::Mat background){
     cv::Mat imageTransformed = image;
 
     cv::Mat backgroundMask1;
@@ -86,6 +78,20 @@ Output* templateMatching(QString imagePath, Template* tem, int method, QString m
         cv::Rect rect = minAreaRect(contours[i]).boundingRect();
         double ratio = (double) rect.width / rect.height;
         if (rect.width > 8 && rect.height > 15 && rect.width < 25 && rect.height < 30 && ratio > 0.5 && ratio < 1){
+            if (rect.x < 0){
+                rect.x = 0;
+            }
+            if (rect.y < 0){
+                rect.y = 0;
+            }
+
+            if (rect.x + rect.width > grayScaleImage2.cols){
+                rect.x = grayScaleImage2.cols - rect.width;
+            }
+            if (rect.y + rect.height > grayScaleImage2.rows){
+                rect.y = grayScaleImage2.rows - rect.height;
+            }
+
             filteredRects.push_back(rect);
         }
     }
@@ -115,6 +121,7 @@ Output* templateMatching(QString imagePath, Template* tem, int method, QString m
         }
     }
 
+
     // GET THE ACTUAL NUMBER
 
     cv::Mat* possibleNumbers = new cv::Mat[filteredRects.size()];
@@ -122,11 +129,17 @@ Output* templateMatching(QString imagePath, Template* tem, int method, QString m
 
     cv::Mat finalImage = grayScaleFilteredComponentsImage;
 
-    Output* output = new Output(finalImage, methodName, tem);
+    Output* output = new Output(image, tem);
     QMap<long, double> correlations; // first, connected component, then template, then rotation
 
+
     for (int i = 0; i < filteredRects.size(); i++){
-        resize(grayScaleImage2(filteredRects[i]), possibleNumbers[i], temSize);
+        //qDebug() << filteredRects[i].width << "  -  " << filteredRects[i].height << "  -  " << filteredRects[i].x << "  -  " << filteredRects[i].y;
+
+        cv::Mat temp = grayScaleImage2(filteredRects[i]);
+
+        resize(temp, possibleNumbers[i], temSize);
+
 
         for (int j = 0; j < TEMPLATES_COUNT; j++){
             int index = 0;
@@ -141,62 +154,54 @@ Output* templateMatching(QString imagePath, Template* tem, int method, QString m
         int index = 0;
         for (int angle = -ROTATION_MAX; angle <= ROTATION_MAX; angle+= ROTATION_STEP){
 
-            cv::Point2f center(possibleNumbers[i].cols/2.0F, possibleNumbers[i].rows/2.0F);
-            cv::Mat rotMat = getRotationMatrix2D(center, angle, 1.0);
+
             cv::Mat rotatedImage;
-            cv::warpAffine(possibleNumbers[i], rotatedImage, rotMat, possibleNumbers[i].size());
 
-            std::vector<std::vector<cv::Point> > rotatedImageContours;
-            std::vector<cv::Vec4i> hierarchy;
-
-            findContours(rotatedImage.clone(), rotatedImageContours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0));
-
-            if (rotatedImageContours.size() == 0){
-                qDebug() << "Error, image doesn't have a contour";
+            if (modules[CENTER_MASS] > 0 | modules[HALVES_CENTER_MASS_VERTI] > 0 | modules[HALVES_CENTER_MASS_HORI] > 0){
+                cv::Point2f center(possibleNumbers[i].cols/2.0F, possibleNumbers[i].rows/2.0F);
+                cv::Mat rotMat = getRotationMatrix2D(center, angle, 1.0);
+                cv::warpAffine(possibleNumbers[i], rotatedImage, rotMat, possibleNumbers[i].size());
             }
-            else {
-                //cv::Rect rect = cv::boundingRect(rotatedImageContours[0]);
 
-                cv::Moments imageMoments = moments(rotatedImageContours[0], false);
-                cv::Point2f massCenter = cv::Point2f(imageMoments.m10/imageMoments.m00 , imageMoments.m01/imageMoments.m00); //  - cv::Point2f(rect.x, rect.y);
+            if (modules[CENTER_MASS] > 0){
+                cv::Point2f massCenter = getMassCenterFromImage(rotatedImage);
 
                 for (int j = 0; j < TEMPLATES_COUNT; j++){
                     double dist = cv::norm(massCenter - tem->getMassCenter(j));
 
-                    correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index] += 3000 / (dist + 0.1);
+                    correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index] += modules[CENTER_MASS] / (dist + 0.1);
                 }
-
-                //qDebug() << i << " - " << angle << " : " << distY << " , " << distX;
             }
 
-            cv::Mat firstHalf = cv::Mat(rotatedImage.clone(), cv::Rect(0, 0, rotatedImage.cols/2, rotatedImage.rows));
-            cv::Mat secondHalf = cv::Mat(rotatedImage.clone(), cv::Rect(rotatedImage.cols/2, 0, rotatedImage.cols/2, rotatedImage.rows));
+            if (modules[HALVES_CENTER_MASS_VERTI] > 0){
+                cv::Mat firstHalf = cv::Mat(rotatedImage.clone(), cv::Rect(0, 0, rotatedImage.cols/2, rotatedImage.rows));
+                cv::Mat secondHalf = cv::Mat(rotatedImage.clone(), cv::Rect(rotatedImage.cols/2, 0, rotatedImage.cols/2, rotatedImage.rows));
 
-            cv::Point2f massCenter1h = getMassCenterFromImage(firstHalf);
-            cv::Point2f massCenter2h = getMassCenterFromImage(secondHalf);
+                cv::Point2f massCenter1h = getMassCenterFromImage(firstHalf);
+                cv::Point2f massCenter2h = getMassCenterFromImage(secondHalf);
 
-            cv::Mat firstHalfHori = cv::Mat(rotatedImage.clone(), cv::Rect(0, 0, rotatedImage.cols, rotatedImage.rows/2));
-            cv::Mat secondHalfHori = cv::Mat(rotatedImage.clone(), cv::Rect(0, rotatedImage.rows/2, rotatedImage.cols, rotatedImage.rows/2));
+                for (int j = 0; j < TEMPLATES_COUNT; j++){
+                    double dist1h = cv::norm(massCenter1h - tem->getHalfMassCenter(0, j));
+                    double dist2h = cv::norm(massCenter2h - tem->getHalfMassCenter(1, j));
 
-            cv::Point2f massCenter1hHori = getMassCenterFromImage(firstHalfHori);
-            cv::Point2f massCenter2hHori = getMassCenterFromImage(secondHalfHori);
-
-            for (int j = 0; j < TEMPLATES_COUNT; j++){
-                double dist1h = cv::norm(massCenter1h - tem->getHalfMassCenter(0, j));
-                double dist2h = cv::norm(massCenter2h - tem->getHalfMassCenter(1, j));
-
-                //qDebug() << i << " - " << j << " - " << angle << " : " << dist1h << " , " << dist2h;
-
-                correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index] += 5000 / (dist1h + dist2h + 0.1);
-
-
-                double dist1hHori = cv::norm(massCenter1hHori - tem->getHalfMassCenterHori(0, j));
-                double dist2hHori = cv::norm(massCenter2hHori - tem->getHalfMassCenterHori(1, j));
-
-                correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index] += 3000 / (dist1hHori + dist2hHori + 0.1);
-                //correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index] *= 0.0000000001 / (dist2h + 0);
+                    correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index] += modules[HALVES_CENTER_MASS_VERTI] / (dist1h + dist2h + 0.1);
+                }
             }
-            //correlations[0][0][0] = 1;
+
+            if (modules[HALVES_CENTER_MASS_HORI] > 0){
+                cv::Mat firstHalfHori = cv::Mat(rotatedImage.clone(), cv::Rect(0, 0, rotatedImage.cols, rotatedImage.rows/2));
+                cv::Mat secondHalfHori = cv::Mat(rotatedImage.clone(), cv::Rect(0, rotatedImage.rows/2, rotatedImage.cols, rotatedImage.rows/2));
+
+                cv::Point2f massCenter1hHori = getMassCenterFromImage(firstHalfHori);
+                cv::Point2f massCenter2hHori = getMassCenterFromImage(secondHalfHori);
+
+                for (int j = 0; j < TEMPLATES_COUNT; j++){
+                    double dist1hHori = cv::norm(massCenter1hHori - tem->getHalfMassCenterHori(0, j));
+                    double dist2hHori = cv::norm(massCenter2hHori - tem->getHalfMassCenterHori(1, j));
+
+                    correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index] += modules[HALVES_CENTER_MASS_HORI] / (dist1hHori + dist2hHori + 0.1);
+                }
+            }
 
             index++;
         }
@@ -307,11 +312,18 @@ Output* templateMatching(QString imagePath, Template* tem, int method, QString m
         }
     }*/
 
+    delete possibleNumbers;
+
     return output;
 }
 
-Output* basicTemplateMatching(QString imagePath, Template* tem, QString backgroundPath){
-    return templateMatching(imagePath, tem, CV_TM_CCOEFF, "basicTemplateMatching", backgroundPath);
+Output* basicTemplateMatching(cv::Mat image, Template* tem, cv::Mat background){
+    int modules[MODULES_COUNT];
+    modules[TEMPLATE_MATCHING] = 7;
+    modules[CENTER_MASS] = 3000;
+    modules[HALVES_CENTER_MASS_VERTI] = 5000;
+    modules[HALVES_CENTER_MASS_HORI] = 3000;
+    return templateMatching(image, tem, modules, background);
 }
 
 int colorDistance(cv::Vec3b c1, cv::Vec3b c2){
