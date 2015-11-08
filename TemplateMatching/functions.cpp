@@ -7,11 +7,12 @@
 
 Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT], cv::Mat background){
     cv::Mat imageTransformed = image;
-
+    cv::Mat imageHue;
     cv::Mat backgroundMask1;
     cv::Mat grayScaleImage;
     cvtColor(image, grayScaleImage, CV_BGR2GRAY);
     cvtColor(image, backgroundMask1, CV_BGR2GRAY);
+    cvtColor(image, imageHue, CV_BGR2HLS);
     //cvtColor(image, imageTransformed, CV_BGR2HSV);
 
     // EXTRACT BACKGROUND
@@ -34,12 +35,98 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
         }
     }
 
-    cv::Mat backgroundMask2 = closeGaps(backgroundMask1, 2, 0.3);
+    cv::Mat backgroundMask2 = closeGaps(backgroundMask1, 5, 0.3);
 
-    cv::Vec3b numberColor = Configuration::getNumberColor();
-    int maxNumberColorDistance = Configuration::getMaxNumberColorDistance();
+    //EXTRACT SHIRT COLORS
+
+    cv::Mat shirtMask = backgroundMask2.clone();
+
+    cv::Vec3b greenColor = Configuration::getGreenColor();
+    int maxGreenColorDistance = Configuration::getMaxGreenColorDistance();
+    cv::Vec3b redColor = Configuration::getRedColor();
+    int maxRedColorDistance = Configuration::getMaxRedColorDistance();
+
+    for (int x = 0; x < shirtMask.cols; x++){
+        for (int y = 0; y < shirtMask.rows; y++){
+            if (backgroundMask2.at<uchar>(y, x) == 0){
+                shirtMask.at<uchar>(y, x) = 0;
+            }
+            else {
+                cv::Vec3b intensity = imageHue.at<cv::Vec3b>(y, x);
+
+                if (intensity[0] > 20 && intensity[0] < 75){
+                    shirtMask.at<uchar>(y, x) = 255;
+                }
+                else{
+                    if (intensity[0] < 10 || intensity[0] > 250){
+                        shirtMask.at<uchar>(y, x) = 255;
+                    }
+                    else{
+                        shirtMask.at<uchar>(y, x) = 0;
+                    }
+                }
+            }
+        }
+    }
+
+
+    cv::Mat shirtMask2 = closeGaps(shirtMask, 2, 0.8);
+
+    // GET SHIRT CONNECTED COMPONENTS
+
+    std::vector<std::vector<cv::Point> > shirtContours;
+    std::vector<cv::Vec4i> shirtHierarchy;
+
+    findContours(shirtMask2.clone(), shirtContours, shirtHierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE );
+
+    QList<cv::Rect> shirtFilteredRects;
+    QList<std::vector<cv::Point> > shirtFilteredContours;
+
+    for (unsigned int i = 0; i < shirtContours.size(); i++){
+        cv::Rect rect = minAreaRect(shirtContours[i]).boundingRect();
+        if (rect.width > 20 && rect.height > 40){
+            if (rect.x < 0){
+                rect.x = 0;
+            }
+            if (rect.y < 0){
+                rect.y = 0;
+            }
+
+            if (rect.x + rect.width > shirtMask2.cols){
+                rect.x = shirtMask2.cols - rect.width;
+            }
+            if (rect.y + rect.height > shirtMask2.rows){
+                rect.y = shirtMask2.rows - rect.height;
+            }
+
+            shirtFilteredRects.push_back(rect);
+            shirtFilteredContours.push_back(shirtContours[i]);
+        }
+    }
+
+    // just to display the image
+
+    /*cv::Mat shirtFilteredImage = shirtMask2.clone();
+
+    for (int x = 0; x < shirtFilteredImage.cols; x++){
+        for (int y = 0; y < shirtFilteredImage.rows; y++){
+            if (shirtFilteredImage.at<uchar>(y, x) == 255){
+                shirtFilteredImage.at<uchar>(y, x) = 0;
+                for (int i = 0; i < shirtFilteredContours.size(); i++){
+                    if (pointPolygonTest(shirtFilteredContours[i], cv::Point2f(x,y), true) >= 0){
+                        shirtFilteredImage.at<uchar>(y, x) = 255;
+                    }
+                }
+            }
+        }
+    }*/
+
+
+
 
     // EXTRACT WHITE PIXELS (NUMBERS)
+    cv::Vec3b numberColor = Configuration::getNumberColor();
+    int maxNumberColorDistance = Configuration::getMaxNumberColorDistance();
 
     for (int x = 0; x < grayScaleImage.cols; x++){
         for (int y = 0; y < grayScaleImage.rows; y++){
@@ -47,11 +134,9 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
                 grayScaleImage.at<uchar>(y, x) = 0;
             }
             else {
-                cv::Vec3b intensity = imageTransformed.at<cv::Vec3b>(y, x);
+                cv::Vec3b intensity = imageHue.at<cv::Vec3b>(y, x);
 
-                int distWhite = colorDistance(numberColor, intensity);
-
-                if (distWhite < maxNumberColorDistance){
+                if (intensity[0] < 30 && intensity[1] > 70 && intensity[2] < 60){
                     grayScaleImage.at<uchar>(y, x) = 255;
                 }
                 else {
@@ -61,7 +146,24 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
         }
     }
 
-    cv::Mat grayScaleImage2 = closeGaps(grayScaleImage, 1, 0.7);
+
+
+    cv::Mat grayScaleImage3 = grayScaleImage.clone();
+
+    for (int x = 0; x < grayScaleImage3.cols; x++){
+        for (int y = 0; y < grayScaleImage3.rows; y++){
+            if (grayScaleImage3.at<uchar>(y, x) == 255){
+                grayScaleImage3.at<uchar>(y, x) = 0;
+                for (int i = 0; i < shirtFilteredContours.size(); i++){
+                    if (pointPolygonTest(shirtFilteredContours[i], cv::Point2f(x,y), true) >= 0){
+                        grayScaleImage3.at<uchar>(y, x) = 255;
+                    }
+                }
+            }
+        }
+    }
+
+    cv::Mat grayScaleImage4 = closeGaps(grayScaleImage3, 1, 0.3);
 
     //GaussianBlur(grayScaleImage, grayScaleImage, cv::Size(7, 7), 0, 0);
 
@@ -70,14 +172,16 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
     std::vector<std::vector<cv::Point> > contours;
     std::vector<cv::Vec4i> hierarchy;
 
-    findContours(grayScaleImage2.clone(), contours, hierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE );
+    findContours(grayScaleImage4.clone(), contours, hierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE );
 
     QList<cv::Rect> filteredRects;
+    QList<std::vector<cv::Point> > filteredContours;
+    QList<cv::Mat> possibleNumbers;
 
     for (unsigned int i = 0; i < contours.size(); i++){
         cv::Rect rect = minAreaRect(contours[i]).boundingRect();
         double ratio = (double) rect.width / rect.height;
-        if (rect.width > 8 && rect.height > 15 && rect.width < 25 && rect.height < 30 && ratio > 0.5 && ratio < 1){
+        if (rect.width > 15 && rect.height > 15 && rect.width < 50 && rect.height < 50  && ratio > 0.5 && ratio < 1.3){
             if (rect.x < 0){
                 rect.x = 0;
             }
@@ -85,28 +189,30 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
                 rect.y = 0;
             }
 
-            if (rect.x + rect.width > grayScaleImage2.cols){
-                rect.x = grayScaleImage2.cols - rect.width;
+            if (rect.x + rect.width > grayScaleImage4.cols){
+                rect.x = grayScaleImage4.cols - rect.width;
             }
-            if (rect.y + rect.height > grayScaleImage2.rows){
-                rect.y = grayScaleImage2.rows - rect.height;
+            if (rect.y + rect.height > grayScaleImage4.rows){
+                rect.y = grayScaleImage4.rows - rect.height;
             }
 
-            filteredRects.push_back(rect);
+            cv::Mat temp = grayScaleImage4(rect);
+
+            cv::Scalar tempVal = mean(temp);
+            uchar meanVal = tempVal.val[0];
+
+            if (meanVal > 60){
+                possibleNumbers.push_back(temp);
+
+                filteredRects.push_back(rect);
+                filteredContours.push_back(contours[i]);
+            }
         }
     }
 
-    QList<std::vector<cv::Point> > filteredContours;
+    // just to display the image
 
-    for (unsigned int i = 0; i < contours.size(); i++){
-        cv::Rect rect = minAreaRect(contours[i]).boundingRect();
-        double ratio = (double) rect.width / rect.height;
-        if (rect.width > 8 && rect.height > 15 && rect.width < 25 && rect.height < 30 && ratio > 0.5 && ratio < 1){
-            filteredContours.push_back(contours[i]);
-        }
-    }
-
-    cv::Mat grayScaleFilteredComponentsImage = grayScaleImage2.clone();
+    /*cv::Mat grayScaleFilteredComponentsImage = grayScaleImage4.clone();
 
     for (int x = 0; x < grayScaleFilteredComponentsImage.cols; x++){
         for (int y = 0; y < grayScaleFilteredComponentsImage.rows; y++){
@@ -119,24 +225,24 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
                 }
             }
         }
-    }
+    }*/
 
 
     // GET THE ACTUAL NUMBER
 
-    cv::Mat* possibleNumbers = new cv::Mat[filteredRects.size()];
+
     cv::Size temSize(tem->getWidth(), tem->getHeigth());
 
-    cv::Mat finalImage = grayScaleFilteredComponentsImage;
+    cv::Mat finalImage = image;
 
-    Output* output = new Output(image, tem);
+    Output* output = new Output(finalImage, tem);
     QMap<long, double> correlations; // first, connected component, then template, then rotation
 
 
     for (int i = 0; i < filteredRects.size(); i++){
         //qDebug() << filteredRects[i].width << "  -  " << filteredRects[i].height << "  -  " << filteredRects[i].x << "  -  " << filteredRects[i].y;
 
-        cv::Mat temp = grayScaleImage2(filteredRects[i]);
+        cv::Mat temp = grayScaleImage4(filteredRects[i]);
 
         resize(temp, possibleNumbers[i], temSize);
 
@@ -312,8 +418,6 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
         }
     }*/
 
-    delete possibleNumbers;
-
     return output;
 }
 
@@ -399,6 +503,88 @@ cv::Mat extractBackgroundFromVideo(QString fileName, int maxFrames){
     return background;
 }
 
+cv::Mat extractBackgroundFromVideo2(QString fileName, int maxFrames){
+    cv::VideoCapture video(fileName.toStdString());
+    cv::Mat background;
+    if (video.isOpened()){
+        cv::Mat frame;
+
+        int**** histo = new int***[1920];
+
+        for (int i = 0; i < 1920; i++){
+            histo[i] = new int**[1080];
+
+            for (int j = 0; j < 1080; j++){
+                histo[i][j] = new int*[3];
+
+                for (int k = 0; k < 3; k++){
+                    histo[i][j][k] = new int[63];
+
+                    for (int l = 0; l < 63; l++){
+                        histo[i][j][k][l] = 0;
+                    }
+                }
+            }
+        }
+
+        video.read(frame);
+        background = frame.clone();
+
+        int frameCount = 0;
+
+        while(video.read(frame) && frameCount < maxFrames){
+            for (int i = 0; i < 1920; i++){
+                for (int j = 0; j < 1080; j++){
+                    cv::Vec3b intensity = frame.at<cv::Vec3b>(j, i);
+                    uchar blue = intensity.val[0];
+                    uchar green = intensity.val[1];
+                    uchar red = intensity.val[2];
+
+                    histo[i][j][0][blue/4]++;
+                    histo[i][j][1][green/4]++;
+                    histo[i][j][2][red/4]++;
+                }
+            }
+
+            qDebug() << frameCount;
+
+            frameCount ++;
+        }
+
+        for (int i = 0; i < 1920; i++){
+            for (int j = 0; j < 1080; j++){
+
+                cv::Vec3b color = background.at<cv::Vec3b>(j, i);
+
+                for (int k = 0; k < 3; k++){
+
+                    int max = 0;
+                    int index = -1;
+                    for (int l = 0; l < 63; l++){
+                        if (histo[i][j][k][l] > max){
+                            max = histo[i][j][k][l];
+                            index = l;
+                        }
+                    }
+
+                    if (index != -1){
+                        color[k] = index*4;
+                    }
+
+                }
+
+                background.at<cv::Vec3b>(j, i) = color;
+            }
+        }
+
+    }
+    else {
+        qDebug() << "Could not open video";
+    }
+
+    return background;
+}
+
 cv::Mat extractBackgroundFromFiles(QStringList filesName){
     cv::Mat* images;
     images = new cv::Mat[filesName.size()];
@@ -421,6 +607,7 @@ cv::Mat extractBackgroundFromFiles(QStringList filesName){
     mog->getBackgroundImage(background);
     return background;
 }
+
 
 cv::Point2f getMassCenterFromImage(cv::Mat image){
     std::vector<std::vector<cv::Point> > contours;

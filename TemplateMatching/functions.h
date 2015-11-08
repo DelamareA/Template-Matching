@@ -19,6 +19,7 @@ Output* basicTemplateMatching(cv::Mat image, Template* tem, cv::Mat background);
 int colorDistance(cv::Vec3b c1, cv::Vec3b c2);
 
 cv::Mat extractBackgroundFromVideo(QString fileName, int maxFrames);
+cv::Mat extractBackgroundFromVideo2(QString fileName, int maxFrames);
 cv::Mat extractBackgroundFromFiles(QStringList filesName);
 
 cv::Mat closeGaps(cv::Mat image, int patchSize, double ratio);

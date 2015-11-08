@@ -1,7 +1,11 @@
 #include "configuration.h"
 
 cv::Vec3b Configuration::numberColor;
+cv::Vec3b Configuration::greenColor;
+cv::Vec3b Configuration::redColor;
 int Configuration::maxNumberColorDistance = 0;
+int Configuration::maxGreenColorDistance = 0;
+int Configuration::maxRedColorDistance = 0;
 int Configuration::minDistanceBetweenNumbers = 0;
 int Configuration::maxBackgroundColorDistance = 0;
 
@@ -33,6 +37,22 @@ void Configuration::setConfigFromFile(QString path){
 
             QStringList l3 = list[3].split(':');
             Configuration::maxBackgroundColorDistance = l3[1].toInt();
+
+            QStringList l4 = list[4].split(':');
+            Configuration::greenColor[0] = l4[1].toInt();
+            Configuration::greenColor[1] = l4[2].toInt();
+            Configuration::greenColor[2] = l4[3].toInt();
+
+            QStringList l5 = list[5].split(':');
+            Configuration::maxGreenColorDistance = l5[1].toInt();
+
+            QStringList l6 = list[6].split(':');
+            Configuration::redColor[0] = l6[1].toInt();
+            Configuration::redColor[1] = l6[2].toInt();
+            Configuration::redColor[2] = l6[3].toInt();
+
+            QStringList l7 = list[7].split(':');
+            Configuration::maxRedColorDistance = l7[1].toInt();
        }
        else {
            qDebug() << "Config file incorrect";
@@ -47,8 +67,24 @@ cv::Vec3b Configuration::getNumberColor(){
     return Configuration::numberColor;
 }
 
+cv::Vec3b Configuration::getGreenColor(){
+    return Configuration::greenColor;
+}
+
+cv::Vec3b Configuration::getRedColor(){
+    return Configuration::redColor;
+}
+
 int Configuration::getMaxNumberColorDistance(){
     return Configuration::maxNumberColorDistance;
+}
+
+int Configuration::getMaxGreenColorDistance(){
+    return Configuration::maxGreenColorDistance;
+}
+
+int Configuration::getMaxRedColorDistance(){
+    return Configuration::maxRedColorDistance;
 }
 
 int Configuration::getMaxBackgroundColorDistance(){

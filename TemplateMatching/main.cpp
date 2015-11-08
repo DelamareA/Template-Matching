@@ -11,14 +11,14 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
 
 int main(int argc, char *argv[]){
 
-    bool isVideo = false;
-    QString imagePath = "screenshot2.png";
-    QString videoPath = "shortVideo.mp4";
+    bool isVideo = true;
+    QString imagePath = "screenshot5.png";
+    QString videoPath = "28.mp4";
     QString outputVideoPath = "output.avi";
     QString templatesPath = "templatesNumber4/";
     QString outputPath = "output.txt";
     QString configPath = "config.txt";
-    QString backgroundPath = "background.png";
+    QString backgroundPath = "backgroundBlackBorders2.png";
 
     return loadAndRun(imagePath, videoPath, outputVideoPath, isVideo, templatesPath, outputPath, configPath, backgroundPath);
 }
@@ -41,7 +41,7 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
         cv::Size size = cv::Size((int) inputVideo.get(CV_CAP_PROP_FRAME_WIDTH), (int) inputVideo.get(CV_CAP_PROP_FRAME_HEIGHT));
 
         cv::VideoWriter outputVideo;
-        outputVideo.open(outputVideoPath.toStdString(), -1, inputVideo.get(CV_CAP_PROP_FPS)/12, size, true);
+        outputVideo.open(outputVideoPath.toStdString(), -1, 4, size, true);
 
         if (!outputVideo.isOpened()){
             qDebug() << "Could not open video output";
@@ -54,7 +54,7 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
 
         while (!image.empty()){
             if (image.rows != background.rows || image.cols != background.cols){
-                qDebug() << "Image and background have not the same size";
+                qDebug() << "Image and background have not the same size : " << image.cols << "x" << image.rows;
             }
 
             out = basicTemplateMatching(image, templateNumbers, background);
@@ -64,7 +64,7 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
 
             qDebug() << count;
 
-            for (int i = 0; i < 4; i++){
+            for (int i = 0; i < 6; i++){
                 inputVideo >> image;
                 count++;
             }
