@@ -232,7 +232,7 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
 
 
     cv::Size temSize(tem->getWidth(), tem->getHeigth());
-
+    QList<cv::Mat> skeletons;
     cv::Mat finalImage = image;
 
     Output* output = new Output(finalImage, tem);
@@ -245,7 +245,15 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
         cv::Mat temp = grayScaleImage4(filteredRects[i]);
 
         resize(temp, possibleNumbers[i], temSize);
+        threshold(possibleNumbers[i], possibleNumbers[i], 127, 255, cv::THRESH_BINARY);
 
+        skeletons.push_back(thinningGuoHall(possibleNumbers[i]));
+
+        Skeleton ske(skeletons[skeletons.size()-1], possibleNumbers[i]);
+
+        qDebug() << ske.listJunctions.size();
+        qDebug() << ske.listLineEnds.size();
+        qDebug() << ske.listHoles.size();
 
         for (int j = 0; j < TEMPLATES_COUNT; j++){
             int index = 0;
@@ -343,6 +351,34 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
         }
     }
 
+    for (int i = 0; i < filteredRects.size(); i++){
+        int index = 0;
+        for (int angle = -ROTATION_MAX; angle <= ROTATION_MAX; angle+= ROTATION_STEP){
+            cv::Point2f center(possibleNumbers[i].cols/2.0F, possibleNumbers[i].rows/2.0F);
+            cv::Mat rotMat = getRotationMatrix2D(center, angle, 1.0);
+            cv::Mat rotatedImage;
+            cv::warpAffine(possibleNumbers[i], rotatedImage, rotMat, possibleNumbers[i].size());
+
+            Histogram hori(rotatedImage.cols);
+            Histogram verti(rotatedImage.rows);
+
+            for (int x = 0; x < rotatedImage.cols; x++){
+                for (int y = 0; y < rotatedImage.rows; y++){
+
+                    hori.add(x, rotatedImage.at<uchar>(y, x)/255.0);
+                    verti.add(y, rotatedImage.at<uchar>(y, x)/255.0);
+                }
+            }
+
+            for (int j = 0; j < TEMPLATES_COUNT; j++){
+                correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index] += modules[HISTOGRAMS] * tem->getHistoHori(j)->compare(hori);
+                correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index] += modules[HISTOGRAMS] * tem->getHistoVerti(j)->compare(verti);
+            }
+
+            index++;
+        }
+    }
+
     //qDebug() << correlations[0][5][3];
 
     for (int i = 0; i < filteredRects.size(); i++){
@@ -424,9 +460,10 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
 Output* basicTemplateMatching(cv::Mat image, Template* tem, cv::Mat background){
     int modules[MODULES_COUNT];
     modules[TEMPLATE_MATCHING] = 7;
-    modules[CENTER_MASS] = 3000;
-    modules[HALVES_CENTER_MASS_VERTI] = 5000;
-    modules[HALVES_CENTER_MASS_HORI] = 3000;
+    modules[CENTER_MASS] = 0;
+    modules[HALVES_CENTER_MASS_VERTI] = 0;
+    modules[HALVES_CENTER_MASS_HORI] = 0;
+    modules[HISTOGRAMS] = 3000;
     return templateMatching(image, tem, modules, background);
 }
 
@@ -624,4 +661,78 @@ cv::Point2f getMassCenterFromImage(cv::Mat image){
 
         return cv::Point2f(imageMoments.m10/imageMoments.m00 , imageMoments.m01/imageMoments.m00);
     }
+}
+
+cv::Mat getSkeleton(cv::Mat image){
+    cv::Mat img = image.clone();
+    threshold(img, img, 127, 255, cv::THRESH_BINARY);
+    cv::Mat skel(img.size(), CV_8UC1, cv::Scalar(0));
+    cv::Mat temp;
+    cv::Mat eroded;
+
+    cv::Mat element = cv::getStructuringElement(cv::MORPH_CROSS, cv::Size(3, 3));
+
+    bool done;
+    do {
+      erode(img, eroded, element);
+      cv::dilate(eroded, temp, element); // temp = open(img)
+      cv::subtract(img, temp, temp);
+      cv::bitwise_or(skel, temp, skel);
+      eroded.copyTo(img);
+
+      done = (cv::countNonZero(img) == 0);
+    } while (!done);
+
+    return skel;
+}
+
+// TEMPORARY FUNCTIONS
+
+void thinningGuoHallIteration(cv::Mat& im, int iter) {
+    cv::Mat marker = cv::Mat::zeros(im.size(), CV_8UC1);
+
+    for (int i = 1; i < im.rows; i++){
+        for (int j = 1; j < im.cols; j++){
+            uchar p2 = im.at<uchar>(i-1, j);
+            uchar p3 = im.at<uchar>(i-1, j+1);
+            uchar p4 = im.at<uchar>(i, j+1);
+            uchar p5 = im.at<uchar>(i+1, j+1);
+            uchar p6 = im.at<uchar>(i+1, j);
+            uchar p7 = im.at<uchar>(i+1, j-1);
+            uchar p8 = im.at<uchar>(i, j-1);
+            uchar p9 = im.at<uchar>(i-1, j-1);
+
+            int C  = (!p2 & (p3 | p4)) + (!p4 & (p5 | p6)) + (!p6 & (p7 | p8)) + (!p8 & (p9 | p2));
+            int N1 = (p9 | p2) + (p3 | p4) + (p5 | p6) + (p7 | p8);
+            int N2 = (p2 | p3) + (p4 | p5) + (p6 | p7) + (p8 | p9);
+            int N  = N1 < N2 ? N1 : N2;
+            int m  = iter == 0 ? ((p6 | p7 | !p9) & p8) : ((p2 | p3 | !p5) & p4);
+
+            if (C == 1 && (N >= 2 && N <= 3) & m == 0){
+                marker.at<uchar>(i,j) = 1;
+            }
+
+        }
+    }
+
+    im &= ~marker;
+}
+
+cv::Mat thinningGuoHall(cv::Mat image){
+    cv::Mat im = image.clone();
+    im /= 255;
+
+    cv::Mat prev = cv::Mat::zeros(im.size(), CV_8UC1);
+    cv::Mat diff;
+
+    do {
+        thinningGuoHallIteration(im, 0);
+        thinningGuoHallIteration(im, 1);
+        cv::absdiff(im, prev, diff);
+        im.copyTo(prev);
+    }
+    while (cv::countNonZero(diff) > 0);
+
+    im *= 255;
+    return im;
 }

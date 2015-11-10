@@ -1,16 +1,17 @@
 #ifndef FUNCTIONS
 #define FUNCTIONS
 
-#define MODULES_COUNT 4
+#define MODULES_COUNT 5
 #define FUNCTIONS_COUNT 1
-#define ROTATION_STEP 5
-#define ROTATION_MAX 10
+#define ROTATION_STEP 10
+#define ROTATION_MAX 30
 #define ROTATION_COUNT (2*ROTATION_MAX/ROTATION_STEP + 1)
 
-enum {TEMPLATE_MATCHING, CENTER_MASS, HALVES_CENTER_MASS_VERTI, HALVES_CENTER_MASS_HORI};
+enum {TEMPLATE_MATCHING, CENTER_MASS, HALVES_CENTER_MASS_VERTI, HALVES_CENTER_MASS_HORI, HISTOGRAMS};
 
 #include "output.h"
 #include "template.h"
+#include "skeleton.h"
 
 Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT], cv::Mat background);
 
@@ -25,6 +26,10 @@ cv::Mat extractBackgroundFromFiles(QStringList filesName);
 cv::Mat closeGaps(cv::Mat image, int patchSize, double ratio);
 
 cv::Point2f getMassCenterFromImage(cv::Mat image);
+cv::Mat getSkeleton(cv::Mat image);
+
+cv::Mat thinningGuoHall(cv::Mat image);
+void thinningGuoHallIteration(cv::Mat& im, int iter);
 
 #endif // FUNCTIONS
 

@@ -48,6 +48,20 @@ Template::Template(QString path){
 
         halfMassCentersHori[i][0] = getMassCenterFromImage(firstHalfHori);
         halfMassCentersHori[i][1] = getMassCenterFromImage(secondHalfHori);
+
+
+        Histogram* hori = new Histogram(width);
+        Histogram* verti = new Histogram(height);
+
+        for (int x = 0; x < images[i].cols; x++){
+            for (int y = 0; y < images[i].rows; y++){
+                hori->add(x, images[i].at<uchar>(y, x)/255.0);
+                verti->add(y ,images[i].at<uchar>(y, x)/255.0);
+            }
+        }
+
+        histoHori[i] = hori;
+        histoVerti[i] = verti;
     }
 }
 
@@ -77,4 +91,12 @@ cv::Point2f Template::getHalfMassCenterHori(int half, int i){
 
 cv::Mat Template::getSingleImage(){
     return images[6];
+}
+
+Histogram* Template::getHistoHori(int i){
+    return histoHori[i];
+}
+
+Histogram* Template::getHistoVerti(int i){
+    return histoVerti[i];
 }
