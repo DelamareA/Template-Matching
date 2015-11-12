@@ -2,8 +2,8 @@
 
 
 Output::Output(cv::Mat image, Template* tem){
-    //cvtColor(image, baseImage, CV_GRAY2BGR);
-    baseImage = image;
+    cvtColor(image, baseImage, CV_GRAY2BGR);
+    //baseImage = image;
     this->tem = tem;
 }
 

@@ -82,7 +82,7 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
 
         cv::namedWindow("Output");
         cv::imshow("Output", out->getImage());
-        cv::waitKey(10000);
+        cv::waitKey(40000);
 
         delete out;
     }
