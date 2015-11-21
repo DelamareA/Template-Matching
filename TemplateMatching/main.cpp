@@ -11,7 +11,7 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
 
 int main(int argc, char *argv[]){
 
-    bool isVideo = false;
+    bool isVideo = true;
     QString imagePath = "screenshot4.png";
     QString videoPath = "28.mp4";
     QString outputVideoPath = "output.avi";
@@ -51,23 +51,47 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
         cv::Mat image;
         inputVideo >> image;
         int count = 0;
+        int frameCount = 0;
+
+        QString outputText;
+        int width = 0;
+        int height = 0;
 
         while (!image.empty()){
             if (image.rows != background.rows || image.cols != background.cols){
                 qDebug() << "Image and background have not the same size : " << image.cols << "x" << image.rows;
             }
 
+            width = image.cols;
+            height = image.rows;
+
+            qDebug() << "Start frame : " << frameCount;
+
             out = basicTemplateMatching(image, templateNumbers, background);
             outputVideo << out->getImage();
+            frameCount++;
+            outputText += out->toString();
 
             delete out;
 
-            qDebug() << count;
+            qDebug() << "End frame : " << frameCount-1;
 
-            for (int i = 0; i < 6; i++){
+            for (int i = 0; i < inputVideo.get(CV_CAP_PROP_FPS); i++){
                 inputVideo >> image;
                 count++;
             }
+        }
+
+        outputText = QString::number(width) + '@' + QString::number(height) + '@' + QString::number(frameCount) + "@" + outputText + "@";
+
+        QFile file(outputPath);
+        if (file.open(QIODevice::WriteOnly)){
+            QTextStream stream(&file);
+            stream << outputText << endl;
+            file.close();
+        }
+        else {
+            qDebug() << "Cannot open " + outputPath;
         }
 
     }
@@ -86,16 +110,6 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
 
         delete out;
     }
-
-    /*QFile file(outputPath);
-    if (file.open(QIODevice::WriteOnly)){
-        QTextStream stream(&file);
-        stream << out->toString() << endl;
-        file.close();
-    }
-    else {
-        qDebug() << "Cannot open " + outputPath;
-    }*/
 
     return 0;
 }

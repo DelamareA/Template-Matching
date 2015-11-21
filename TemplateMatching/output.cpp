@@ -38,8 +38,7 @@ cv::Mat Output::getImage(){
 }
 
 QString Output::toString(){
-    QString out = "1@"; // for now one frame
-
+    QString out;
     out += QString::number(listX.size());
     out += '%';
 
@@ -48,6 +47,7 @@ QString Output::toString(){
         out += '%';
     }
 
-    out += "@";
+    out += '@';
+
     return out;
 }

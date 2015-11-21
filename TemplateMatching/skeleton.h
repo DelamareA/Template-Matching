@@ -21,6 +21,8 @@ class Skeleton {
         Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage);
         QList<int> possibleNumbers();
         QList<cv::Point2d> sort(QList<cv::Point2d> list);
+        double min(double a, double b);
+        QList<double> vectorization();
 
     public: // CHANGE
         QList<cv::Point2d> listHoles;

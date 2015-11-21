@@ -276,9 +276,9 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
         Skeleton ske(skeletons[skeletons.size()-1], possibleNumbers[i]);
         listPossibleNumbers.push_back(ske.possibleNumbers());
 
-        qDebug() << ske.listJunctions.size();
-        qDebug() << ske.listLineEnds.size();
-        qDebug() << ske.listHoles.size();
+        //qDebug() << ske.listJunctions.size();
+        //qDebug() << ske.listLineEnds.size();
+        //qDebug() << ske.listHoles.size();
 
         for (int j = 0; j < TEMPLATES_COUNT; j++){
             int index = 0;
