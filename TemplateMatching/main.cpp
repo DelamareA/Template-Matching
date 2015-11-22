@@ -20,7 +20,14 @@ int main(int argc, char *argv[]){
     QString configPath = "config.txt";
     QString backgroundPath = "backgroundBlackBorders2.png";
 
-    return loadAndRun(imagePath, videoPath, outputVideoPath, isVideo, templatesPath, outputPath, configPath, backgroundPath);
+
+    QList<int> numbers;
+    numbers.push_back(3);
+    numbers.push_back(5);
+    generateDataSet(numbers, 100, 36, 45, "dataset35/", "labels/35.txt");
+
+
+    return 0;//loadAndRun(imagePath, videoPath, outputVideoPath, isVideo, templatesPath, outputPath, configPath, backgroundPath);
 }
 
 int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bool isVideo, QString templatesPath, QString outputPath, QString configPath, QString backgroundPath){
