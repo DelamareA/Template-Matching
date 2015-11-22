@@ -304,7 +304,7 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
 
                 cv::Mat rotatedImage;
 
-                if (modules[CENTER_MASS] > 0 | modules[HALVES_CENTER_MASS_VERTI] > 0 | modules[HALVES_CENTER_MASS_HORI] > 0){
+                if (modules[CENTER_MASS] > 0 || modules[HALVES_CENTER_MASS_VERTI] > 0 || modules[HALVES_CENTER_MASS_HORI] > 0){
                     cv::Point2f center(possibleNumbers[i].cols/2.0F, possibleNumbers[i].rows/2.0F);
                     cv::Mat rotMat = getRotationMatrix2D(center, angle, 1.0);
                     cv::warpAffine(possibleNumbers[i], rotatedImage, rotMat, possibleNumbers[i].size());

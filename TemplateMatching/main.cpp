@@ -21,10 +21,12 @@ int main(int argc, char *argv[]){
     QString backgroundPath = "backgroundBlackBorders2.png";
 
 
-    QList<int> numbers;
+    /*QList<int> numbers;
     numbers.push_back(3);
     numbers.push_back(5);
-    generateDataSet(numbers, 100, 36, 45, "dataset35/", "labels/35.txt");
+    generateDataSet(numbers, 100, 36, 45, "svm/3-5/");*/
+
+    generateSVM("svm/3-5/");
 
 
     return 0;//loadAndRun(imagePath, videoPath, outputVideoPath, isVideo, templatesPath, outputPath, configPath, backgroundPath);

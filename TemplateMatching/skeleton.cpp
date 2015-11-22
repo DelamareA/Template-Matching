@@ -171,8 +171,6 @@ Skeleton::Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage){
         }
     }
 
-    imwrite("te4.png", skeletonizedImage);
-
     // MERGING CLOSE JUNCTIONS
     bool done = true;
 
@@ -344,46 +342,37 @@ QList<int> Skeleton::possibleNumbers(){
 }
 
 QList<double> Skeleton::vectorization() {
-    // 0 -> num holes
-    // 1 -> hole 1 x
-    // 2 -> hole 1 y
-    // 3 -> hole 2 x
-    // 4 -> hole 2 y
-    // 5 -> num ends
-    // 6 -> end 1 x
-    // 7 -> end 1 y
-    // 8 -> end 2 x
-    // 9 -> end 2 y
-    // 10 -> end 3 x
-    // 11 -> end 3 y
-    // 12 -> num junc
-    // 13 -> junc 1 x
-    // 14 -> junc 1 y
-    // 15 -> junc 2 x
-    // 16 -> junc 2 y
+    // 0 -> num ends
+    // 1 -> end 1 x
+    // 2 -> end 1 y
+    // 3 -> end 2 x
+    // 4 -> end 2 y
+    // 5 -> end 3 x
+    // 6 -> end 3 y
+    // 7 -> num junc
+    // 8 -> junc 1 x
+    // 9 -> junc 1 y
+    // 10 -> junc 2 x
+    // 11 -> junc 2 y
 
     QList<double> result;
-    result.reserve(17);
 
-    result[0] = (min(listHoles.size() / 2.0, 1.0));
-
-    for (int i = 0; i < listHoles.size() && i < 2; i++){
-        result[1+2*i] = (listHoles[i].x);
-        result[2+2*i] = (listHoles[i].y);
+    for (int i = 0; i < VECTOR_DIMENSION; i++){
+        result.push_back(0.0001);
     }
 
-    result[5] = (min(listLineEnds.size() / 3.0, 1.0));
+    result[0] = (min(listLineEnds.size() / 3.0, 1.0));
 
     for (int i = 0; i < listLineEnds.size() && i < 3; i++){
-        result[6+2*i] = (listLineEnds[i].x);
-        result[7+2*i] = (listLineEnds[i].y);
+        result[1+2*i] = (listLineEnds[i].x);
+        result[2+2*i] = (listLineEnds[i].y);
     }
 
-    result[12] = (min(listJunctions.size() / 2.0, 1.0));
+    result[7] = (min(listJunctions.size() / 2.0, 1.0));
 
     for (int i = 0; i < listJunctions.size() && i < 2; i++){
-        result[13+2*i] = (listJunctions[i].x);
-        result[14+2*i] = (listJunctions[i].y);
+        result[8+2*i] = (listJunctions[i].x);
+        result[9+2*i] = (listJunctions[i].y);
     }
 
     return result;

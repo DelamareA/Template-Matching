@@ -10,6 +10,8 @@
 #define MERGE_DISTANCE 0.05
 #define DELETE_DISTANCE 0.15
 
+#define VECTOR_DIMENSION 12
+
 struct LabeledPoint {
     int label;
     cv::Point2i point;

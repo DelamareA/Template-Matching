@@ -31,7 +31,8 @@ cv::Mat getSkeleton(cv::Mat image);
 cv::Mat thinningGuoHall(cv::Mat image);
 void thinningGuoHallIteration(cv::Mat& im, int iter);
 
-void generateDataSet(QList<int> numbers, int countPerNumber, int width, int height, QString outputPathImages, QString outputPathLabels);
+void generateDataSet(QList<int> numbers, int countPerNumber, int width, int height, QString outputPath);
+void generateSVM(QString path);
 
 #endif // FUNCTIONS
 
