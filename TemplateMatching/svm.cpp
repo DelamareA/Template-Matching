@@ -9,7 +9,6 @@
 #include <qglobal.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
-#include <opencv2/ml.hpp>
 
 #include "functions.h"
 
@@ -50,11 +49,62 @@ void generateDataSet(QList<int> numbers, int countPerNumber, int width, int heig
             }
 
             painter.translate(width, size);
-            painter.rotate((rand() % 100) - 50);
+            //double realAngle = (rand() % 100) - 50;
+            //painter.rotate(realAngle);
             painter.drawText(QPoint(0, size), QString::number(numbers[i]));
 
             QImage image = pix.toImage();
-            int minX = pix.width()-1;
+
+            Mat mat = Mat::zeros(pix.height(), pix.width(), CV_8U);
+            for (int x = 0; x < pix.width(); x++){
+                for (int y = 0; y < pix.height(); y++){
+                    QRgb val = image.pixel(x, y);
+
+                    if (qRed(val) > 120){
+                        mat.at<uchar>(y, x) = 255;
+                    }
+                    else {
+                        mat.at<uchar>(y, x) = 0;
+                    }
+                }
+            }
+
+            // GET CONTOUR
+
+            std::vector<std::vector<Point> > contours;
+            std::vector<Vec4i> hierarchy;
+
+            findContours(mat.clone(), contours, hierarchy, CV_RETR_EXTERNAL , CV_CHAIN_APPROX_NONE);
+
+            if (contours.size() < 1){
+                qDebug() << "Error : 0 contour found";
+
+                // just to avoid future bugs
+                imwrite(QString(outputPath + "dataset/" + QString::number(i * countPerNumber + j) + ".png").toStdString(), mat);
+            }
+            else {
+                RotatedRect rect = minAreaRect(contours[0]);
+
+                float angle = rect.angle;
+
+                Size rectSize = rect.size;
+                if (rect.angle <= -35) {
+                    angle += 90.0;
+                    swap(rectSize.width, rectSize.height);
+                }
+                //qDebug() << angle << " vs " << realAngle;
+                Mat rotationMatrix = getRotationMatrix2D(rect.center, angle, 1.0);
+                Mat rotated, cropped;
+                warpAffine(mat, rotated, rotationMatrix, mat.size(), INTER_CUBIC);
+                getRectSubPix(rotated, rectSize, rect.center, cropped);
+
+                Mat resized;
+                resize(cropped, resized, Size(width, width));
+
+                imwrite(QString(outputPath + "dataset/" + QString::number(i * countPerNumber + j) + ".png").toStdString(), resized);
+            }
+
+            /*int minX = pix.width()-1;
             int maxX = 0;
             int minY = pix.height()-1;
             int maxY = 0;
@@ -85,7 +135,7 @@ void generateDataSet(QList<int> numbers, int countPerNumber, int width, int heig
             }
 
             QRect rect(QPoint(minX, minY), QPoint(maxX, maxY));
-            image.copy(rect).scaled(width, height).save(outputPath + "dataset/" + QString::number(i * countPerNumber + j) + ".png");
+            image.copy(rect).scaled(width, height).save(outputPath + "dataset/" + QString::number(i * countPerNumber + j) + ".png");*/
 
             labels += " " + QString::number(numbers[i]);
         }
@@ -103,7 +153,7 @@ void generateDataSet(QList<int> numbers, int countPerNumber, int width, int heig
 }
 
 
-void generateSVM(QString path){
+void generateSVM(QString path, int type){
     QFile file(path + "labels.txt");
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)){
         qDebug() << "Cannot open " + path + "labels.txt";
@@ -111,12 +161,14 @@ void generateSVM(QString path){
     }
 
     QTextStream in(&file);
-    QStringList labelsString = in.readAll().split(' ');
+    QStringList labelsString = in.readAll().split(' ');    
 
     int count = labelsString[0].toInt();
 
+    int dim = Skeleton::getDim(type);
+
     double labels[count];
-    double trainingData[count][VECTOR_DIMENSION];
+    double trainingData[count][dim];
 
     for (int i = 0; i < count; i++){
         cv::Mat image;
@@ -130,20 +182,56 @@ void generateSVM(QString path){
 
         cv::imwrite((path + "skeletons/" + QString::number(i) + ".png").toStdString(), skeleton);
 
-        QList<double> vect = ske.vectorization();
+        QList<double> vect = ske.vectorization(type);
 
         labels[i] = labelsString[i+1].toInt();
-        for (int j = 0; j < VECTOR_DIMENSION; j++){
+        for (int j = 0; j < dim; j++){
             trainingData[i][j] = vect[j];
+            //qDebug() << vect[j] * 2 - 1;
         }
     }
     Mat labelsMat(count, 1, CV_32SC1, labels);
-    Mat trainingDataMat(count, VECTOR_DIMENSION, CV_32FC1, trainingData);
+    Mat trainingDataMat(count, dim, CV_32FC1, trainingData);
 
     Ptr<ml::SVM> svm = ml::SVM::create();
 
     Ptr<TrainData> data = TrainData::create(trainingDataMat, ROW_SAMPLE, labelsMat);
 
-    svm->trainAuto(data, 200);
+    //svm->setGamma(3);
+    //svm->setKernel(cv::ml::SVM::RBF);
+    //svm->setType(cv::ml::SVM::C_SVC);
+    svm->setGamma(1);
+    svm->trainAuto(data);
     svm->save((path + "svm.xml").toStdString());
+
+    Mat image = Mat::zeros(1000, 1000, CV_8UC3);
+
+    Vec3b green(0,255,0), blue (255,0,0);
+    // Show the decision regions given by the SVM
+    for (int i = 0; i < image.rows; ++i)
+        for (int j = 0; j < image.cols; ++j)
+        {
+            Mat sampleMat = (Mat_<float>(1,2) << j/1000.0,i/1000.0);
+            float response = svm->predict(sampleMat);
+
+            if (response == 1)
+                image.at<Vec3b>(i,j)  = green;
+            else if(response == -1)
+                 image.at<Vec3b>(i,j)  = blue;
+        }
+
+    // Show support vectors
+        int thickness = 2;
+        int lineType  = 8;
+        int c     = svm->getSupportVectors().rows;
+        qDebug() << "Hello" << c;
+
+        for (int i = 0; i < c; ++i)
+        {
+            Mat v = svm->getSupportVectors().row(i);
+            circle( image,  Point(v.at<double>(0, 0) * -1000, v.at<double>(0, 1) * -1000),   6,  Scalar(128, 128, 128), thickness, lineType);
+        }
+
+    imshow("SVM Simple Example", image); // show it to the user
+    waitKey(0);
 }

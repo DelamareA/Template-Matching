@@ -1,6 +1,12 @@
 #ifndef FUNCTIONS
 #define FUNCTIONS
 
+#include <opencv2/ml.hpp>
+
+#include "output.h"
+#include "template.h"
+#include "skeleton.h"
+
 #define MODULES_COUNT 5
 #define FUNCTIONS_COUNT 1
 #define ROTATION_STEP 10
@@ -9,13 +15,13 @@
 
 enum {TEMPLATE_MATCHING, CENTER_MASS, HALVES_CENTER_MASS_VERTI, HALVES_CENTER_MASS_HORI, HISTOGRAMS};
 
-#include "output.h"
-#include "template.h"
-#include "skeleton.h"
+struct Machines{
+    cv::Ptr<cv::ml::SVM> m3_5;
+};
 
-Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT], cv::Mat background);
+Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT], cv::Mat background, Machines machines);
 
-Output* basicTemplateMatching(cv::Mat image, Template* tem, cv::Mat background);
+Output* basicTemplateMatching(cv::Mat image, Template* tem, cv::Mat background, Machines machines);
 
 int colorDistance(cv::Vec3b c1, cv::Vec3b c2);
 
@@ -32,7 +38,7 @@ cv::Mat thinningGuoHall(cv::Mat image);
 void thinningGuoHallIteration(cv::Mat& im, int iter);
 
 void generateDataSet(QList<int> numbers, int countPerNumber, int width, int height, QString outputPath);
-void generateSVM(QString path);
+void generateSVM(QString path, int type);
 
 #endif // FUNCTIONS
 

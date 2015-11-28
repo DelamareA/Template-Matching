@@ -11,7 +11,7 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
 
 int main(int argc, char *argv[]){
 
-    bool isVideo = true;
+    bool isVideo = false;
     QString imagePath = "screenshot4.png";
     QString videoPath = "28.mp4";
     QString outputVideoPath = "output.avi";
@@ -24,12 +24,12 @@ int main(int argc, char *argv[]){
     /*QList<int> numbers;
     numbers.push_back(3);
     numbers.push_back(5);
-    generateDataSet(numbers, 100, 36, 45, "svm/3-5/");*/
+    generateDataSet(numbers, 100, 36, 45, "svm/3-5/");
 
-    generateSVM("svm/3-5/");
+    generateSVM("svm/3-5/", M3_5);*/
 
 
-    return 0;//loadAndRun(imagePath, videoPath, outputVideoPath, isVideo, templatesPath, outputPath, configPath, backgroundPath);
+    return loadAndRun(imagePath, videoPath, outputVideoPath, isVideo, templatesPath, outputPath, configPath, backgroundPath);
 }
 
 int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bool isVideo, QString templatesPath, QString outputPath, QString configPath, QString backgroundPath){
@@ -39,6 +39,43 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
     cv::Mat background = cv::imread(backgroundPath.toStdString());
 
     Output* out = 0;
+
+    Machines machines;
+    machines.m3_5 = cv::ml::StatModel::load<cv::ml::SVM>("svm/3-5/svm.xml");
+
+    /*int dim = Skeleton::getDim(M3_5);
+
+    for (int i = 00; i < 200; i++){
+        cv::Mat image;
+        image = cv::imread(QString("svm/3-5/dataset/" + QString::number(i) + ".png").toStdString(), CV_LOAD_IMAGE_COLOR);
+
+        cv::Mat grayScaleImage;
+        cvtColor(image, grayScaleImage, CV_BGR2GRAY);
+
+        cv::Mat skeleton = thinningGuoHall(grayScaleImage);
+        Skeleton ske(skeleton, grayScaleImage);
+
+        qDebug() << i << " : Num : " << ske.listLineEnds.size();
+        for (int k = 0; k < ske.listLineEnds.size(); k++){
+            qDebug() << i << " : " << ske.listLineEnds[k].x;
+            qDebug() << i << " : " << ske.listLineEnds[k].y;
+        }
+
+        QList<double> vect = ske.vectorization(M3_5);
+
+        float sampleData[dim];
+
+        for (int i = 0; i < dim; i++){
+            sampleData[i] = vect[i];
+        }
+
+        cv::Mat sampleMat(1, dim, CV_32FC1, sampleData);
+        float response = machines.m3_5->predict(sampleMat);
+
+        qDebug() << response;
+    }*/
+
+
 
     if (isVideo){
         cv::VideoCapture inputVideo(videoPath.toStdString());
@@ -76,7 +113,7 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
 
             qDebug() << "Start frame : " << frameCount;
 
-            out = basicTemplateMatching(image, templateNumbers, background);
+            out = basicTemplateMatching(image, templateNumbers, background, machines);
             outputVideo << out->getImage();
             frameCount++;
             outputText += out->toString();
@@ -111,7 +148,7 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
             qDebug() << "Image and background have not the same size";
         }
 
-        out = basicTemplateMatching(image, templateNumbers, background);
+        out = basicTemplateMatching(image, templateNumbers, background, machines);
 
         cv::namedWindow("Output");
         cv::imshow("Output", out->getImage());

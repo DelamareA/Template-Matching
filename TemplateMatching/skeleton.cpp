@@ -3,7 +3,7 @@
 
 Skeleton::Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage){
 
-    QList<LabeledPoint> startList;
+    //QList<LabeledPoint> startList;
     QList<cv::Point2i> dummyJunctionList;
     QList<LabeledPoint> removedPoints;
     QList<int> survivors;
@@ -84,7 +84,7 @@ Skeleton::Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage){
                             cv::Point2i point(x+i,y+j);
 
                             for (int k = 0; k < dummyJunctionList.size(); k++){
-                                if (cv::norm(point - dummyJunctionList[k]) == 0){
+                                if (cv::norm(point - dummyJunctionList[k]) <= 1){
                                     junction = true;
                                 }
                             }
@@ -120,6 +120,56 @@ Skeleton::Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage){
 
         if (survivors.contains(label)){
             skeletonizedImage.at<uchar>(point) = 255;
+        }
+    }
+
+    // LOOPS
+
+    std::vector<std::vector<cv::Point> > contours;
+    std::vector<cv::Vec4i> hierarchy;
+
+    findContours(normalImage.clone(), contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
+
+    cv::Mat invertedImage = normalImage.clone();
+
+    if (contours.size() < 1){
+        qDebug() << "Error, 0 connected components detected";
+    }
+    else {
+        for (int x = 0; x < normalImage.cols; x++){
+            for (int y = 0; y < normalImage.rows; y++){
+                if (normalImage.at<uchar>(y, x) == 255){
+                    invertedImage.at<uchar>(y, x) = 0;
+                }
+                else if (pointPolygonTest(contours[0], cv::Point2f(x,y), true) >= 0){
+                    invertedImage.at<uchar>(y, x) = 255;
+                }
+                else {
+                    invertedImage.at<uchar>(y, x) = 0;
+                }
+            }
+        }
+    }
+
+    std::vector<std::vector<cv::Point> > invertedContours;
+    std::vector<cv::Vec4i> invertedHierarchy;
+
+    findContours(invertedImage, invertedContours, invertedHierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+
+    for (unsigned int i = 0; i < invertedContours.size(); i++){
+        cv::Rect rect = minAreaRect(invertedContours[i]).boundingRect();
+
+        double xNorm = ((double) rect.x + rect.width/2) / skeletonizedImage.cols;
+        double yNorm = ((double) rect.y + rect.height/2) / skeletonizedImage.rows;
+
+        cv::Point2d point(xNorm, yNorm);
+
+
+        if (rect.width > 3 && rect.height > 3){
+            listHoles.push_back(point);
+        }
+        else {
+            listFakeHoles.push_back(point);
         }
     }
 
@@ -195,7 +245,6 @@ Skeleton::Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage){
         }
     } while (!done);
 
-
     // DELETING CLOSE JUNCTIONS AND LINE ENDS, ALWAYS WRONG DATA
     done = true;
 
@@ -219,57 +268,67 @@ Skeleton::Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage){
         }
     } while (!done);
 
-    // LOOPS
+    // DELETING JUNCTIONS CLOSE TO FAKE LOOPS
 
-    std::vector<std::vector<cv::Point> > contours;
-    std::vector<cv::Vec4i> hierarchy;
+    done = true;
 
-    findContours(normalImage.clone(), contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
-
-    cv::Mat invertedImage = normalImage.clone();
-
-    if (contours.size() < 1){
-        qDebug() << "Error, 0 connected components detected";
-    }
-    /*else if (contours.size() > 1){
-        qDebug() << "Error, multiple connected components detected : "  << contours.size();
-
-        cv::Rect rect1 = minAreaRect(contours[0]).boundingRect();
-        qDebug() << rect1.width << " " << rect1.height;
-
-        cv::Rect rect2 = minAreaRect(contours[1]).boundingRect();
-        qDebug() << rect2.width << " " << rect2.height;
-    }*/
-    else {
-        for (int x = 0; x < normalImage.cols; x++){
-            for (int y = 0; y < normalImage.rows; y++){
-                if (normalImage.at<uchar>(y, x) == 255){
-                    invertedImage.at<uchar>(y, x) = 0;
-                }
-                else if (pointPolygonTest(contours[0], cv::Point2f(x,y), true) >= 0){
-                    invertedImage.at<uchar>(y, x) = 255;
-                }
-                else {
-                    invertedImage.at<uchar>(y, x) = 0;
+    do {
+        done = true;
+        int removeIndexJunction = -1;
+        for (int i = 0; i < listJunctions.size(); i++){
+            for (int j = 0; j < listFakeHoles.size(); j++){
+                if (norm(listJunctions[i] - listFakeHoles[j]) < FAKE_LOOPS_DISTANCE){
+                    removeIndexJunction = i;
                 }
             }
         }
-    }
 
-    std::vector<std::vector<cv::Point> > invertedContours;
-    std::vector<cv::Vec4i> invertedHierarchy;
+        if (removeIndexJunction != -1){
+            done = false;
+            listJunctions.removeAt(removeIndexJunction);
+        }
+    } while (!done);
 
-    findContours(invertedImage, invertedContours, invertedHierarchy, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+    // DELETING LINE ENDS CLOSE TO FAKE LOOPS
 
-    for (unsigned int i = 0; i < invertedContours.size(); i++){
-        cv::Rect rect = minAreaRect(invertedContours[i]).boundingRect();
+    done = true;
 
-        double xNorm = ((double) rect.x + rect.width/2) / skeletonizedImage.cols;
-        double yNorm = ((double) rect.y + rect.height/2) / skeletonizedImage.rows;
+    do {
+        done = true;
+        int removeIndexEnd = -1;
+        for (int i = 0; i < listLineEnds.size(); i++){
+            for (int j = 0; j < listFakeHoles.size(); j++){
+                if (norm(listLineEnds[i] - listFakeHoles[j]) < FAKE_LOOPS_DISTANCE){
+                    removeIndexEnd = i;
+                }
+            }
+        }
 
-        cv::Point2d point(xNorm, yNorm);
-        listHoles.push_back(point);
-    }
+        if (removeIndexEnd != -1){
+            done = false;
+            listLineEnds.removeAt(removeIndexEnd);
+        }
+    } while (!done);
+
+    // DELETING JUNCTIONS CLOSE TO BORDERS, ALWAYS WRONG DATA
+    done = true;
+
+    do {
+        done = true;
+        int removeIndexJunctions = -1;
+        for (int i = 0; i < listJunctions.size(); i++){
+            if (listJunctions[i].x < JUNCTION_MARGIN || listJunctions[i].y < JUNCTION_MARGIN || listJunctions[i].x > 1 - JUNCTION_MARGIN || listJunctions[i].y > 1 - JUNCTION_MARGIN){
+                removeIndexJunctions = i;
+            }
+        }
+
+        if (removeIndexJunctions != -1){
+            done = false;
+            listJunctions.removeAt(removeIndexJunctions);
+        }
+    } while (!done);
+
+
 
     listLineEnds = sort(listLineEnds);
     listHoles = sort(listHoles);
@@ -341,7 +400,7 @@ QList<int> Skeleton::possibleNumbers(){
     return list;
 }
 
-QList<double> Skeleton::vectorization() {
+QList<double> Skeleton::vectorization(int type) {
     // 0 -> num ends
     // 1 -> end 1 x
     // 2 -> end 1 y
@@ -357,25 +416,68 @@ QList<double> Skeleton::vectorization() {
 
     QList<double> result;
 
-    for (int i = 0; i < VECTOR_DIMENSION; i++){
+    int count = getDim(type);
+    int end = getEndCount(type);
+    int junction = getJunctionCount(type);
+
+    int index = 0;
+
+    for (int i = 0; i < count; i++){
         result.push_back(0.0001);
     }
 
-    result[0] = (min(listLineEnds.size() / 3.0, 1.0));
+    //result[0] = (min(listLineEnds.size() / 3.0, 1.0));
 
-    for (int i = 0; i < listLineEnds.size() && i < 3; i++){
-        result[1+2*i] = (listLineEnds[i].x);
-        result[2+2*i] = (listLineEnds[i].y);
+    for (int i = 0; i < listLineEnds.size() && i < end; i++){
+        result[index] = (listLineEnds[i].x);
+        index++;
+
+        result[index] = (listLineEnds[i].y);
+        index++;
     }
 
-    result[7] = (min(listJunctions.size() / 2.0, 1.0));
+    //result[7] = (min(listJunctions.size() / 2.0, 1.0));
 
-    for (int i = 0; i < listJunctions.size() && i < 2; i++){
-        result[8+2*i] = (listJunctions[i].x);
-        result[9+2*i] = (listJunctions[i].y);
+    for (int i = 0; i < listJunctions.size() && i < junction; i++){
+        result[index] = (listJunctions[i].x);
+        index++;
+
+        result[index] = (listJunctions[i].y);
+        index++;
     }
 
     return result;
+}
+
+
+int Skeleton::getDim(int type){
+    switch(type){
+        case M3_5 :
+        return VECTOR_DIMENSION_3_5;
+
+         default :
+        return VECTOR_DIMENSION;
+    }
+}
+
+int Skeleton::getEndCount(int type){
+    switch(type){
+        case M3_5 :
+        return END_3_5;
+
+         default :
+        return END;
+    }
+}
+
+int Skeleton::getJunctionCount(int type){
+    switch(type){
+        case M3_5 :
+        return JUNCTION_3_5;
+
+         default :
+        return JUNCTION;
+    }
 }
 
 double Skeleton::min(double a, double b){

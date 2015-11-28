@@ -5,7 +5,7 @@
 #include "configuration.h"
 #include <vector>
 
-Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT], cv::Mat background){
+Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT], cv::Mat background, Machines machines){
     cv::Mat imageTransformed = image;
     cv::Mat imageHue;
     cv::Mat backgroundMask1;
@@ -35,7 +35,15 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
         }
     }
 
-    cv::Mat backgroundMask2 = closeGaps(backgroundMask1, 5, 0.3);
+    int dilateSize = 10;
+    cv::Mat dilateElement = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2*dilateSize + 1, 2*dilateSize + 1), cv::Point(dilateSize, dilateSize) );
+    cv::dilate(backgroundMask1, backgroundMask1, dilateElement);
+
+    int erodeSize = 17;
+    cv::Mat erodeElement = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2*erodeSize + 1, 2*erodeSize + 1), cv::Point(erodeSize, erodeSize) );
+    cv::erode(backgroundMask1, backgroundMask1, erodeElement);
+
+    cv::Mat backgroundMask2 = backgroundMask1;
 
     //EXTRACT SHIRT COLORS
 
@@ -268,7 +276,25 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
             }
         }
 
-        resize(temp, possibleNumbers[i], temSize);
+        // rotate the contour
+        cv::RotatedRect rect = minAreaRect(filteredContours[i]);
+        rect.center.x = temp.cols/2;
+        rect.center.y = temp.rows/2;
+
+        float angle = rect.angle;
+
+        cv::Size rectSize = rect.size;
+        if (rect.angle <= -35) {
+            angle += 90.0;
+            cv::swap(rectSize.width, rectSize.height);
+        }
+        cv::Mat rotationMatrix = cv::getRotationMatrix2D(rect.center, angle, 1.0);
+        cv::Mat rotated, cropped;
+        cv::warpAffine(temp, rotated, rotationMatrix, temp.size(), cv::INTER_CUBIC);
+        cv::getRectSubPix(rotated, rectSize, rect.center, cropped);
+
+        cv::resize(cropped, possibleNumbers[i], temSize);
+
         threshold(possibleNumbers[i], possibleNumbers[i], 127, 255, cv::THRESH_BINARY);
 
         skeletons.push_back(thinningGuoHall(possibleNumbers[i]));
@@ -494,14 +520,14 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
     return output;
 }
 
-Output* basicTemplateMatching(cv::Mat image, Template* tem, cv::Mat background){
+Output* basicTemplateMatching(cv::Mat image, Template* tem, cv::Mat background, Machines machines){
     int modules[MODULES_COUNT];
     modules[TEMPLATE_MATCHING] = 7;
     modules[CENTER_MASS] = 0;
     modules[HALVES_CENTER_MASS_VERTI] = 0;
     modules[HALVES_CENTER_MASS_HORI] = 0;
     modules[HISTOGRAMS] = 3000;
-    return templateMatching(image, tem, modules, background);
+    return templateMatching(image, tem, modules, background, machines);
 }
 
 int colorDistance(cv::Vec3b c1, cv::Vec3b c2){
@@ -745,7 +771,7 @@ void thinningGuoHallIteration(cv::Mat& im, int iter) {
             int N  = N1 < N2 ? N1 : N2;
             int m  = iter == 0 ? ((p6 | p7 | !p9) & p8) : ((p2 | p3 | !p5) & p4);
 
-            if (C == 1 && (N >= 2 && N <= 3) & m == 0){
+            if (C == 1 && (N >= 2 && N <= 3) && m == 0){
                 marker.at<uchar>(i,j) = 1;
             }
 
@@ -757,6 +783,13 @@ void thinningGuoHallIteration(cv::Mat& im, int iter) {
 
 cv::Mat thinningGuoHall(cv::Mat image){
     cv::Mat im = image.clone();
+    for (int i = 0; i < im.rows; i++){
+        for (int j = 0; j < im.cols; j++){
+            if (i == 0 || j == 0 || i == im.rows-1 || j == im.cols-1){
+                im.at<uchar>(i,j) = 0;
+            }
+        }
+    }
     im /= 255;
 
     cv::Mat prev = cv::Mat::zeros(im.size(), CV_8UC1);
