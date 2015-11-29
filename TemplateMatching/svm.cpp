@@ -167,8 +167,8 @@ void generateSVM(QString path, int type){
 
     int dim = Skeleton::getDim(type);
 
-    double labels[count];
-    double trainingData[count][dim];
+    float labels[count];
+    float trainingData[count][dim];
 
     for (int i = 0; i < count; i++){
         cv::Mat image;
@@ -186,8 +186,7 @@ void generateSVM(QString path, int type){
 
         labels[i] = labelsString[i+1].toInt();
         for (int j = 0; j < dim; j++){
-            trainingData[i][j] = vect[j];
-            //qDebug() << vect[j] * 2 - 1;
+            trainingData[i][j] = 2 * vect[j] - 1;
         }
     }
     Mat labelsMat(count, 1, CV_32SC1, labels);
@@ -198,40 +197,11 @@ void generateSVM(QString path, int type){
     Ptr<TrainData> data = TrainData::create(trainingDataMat, ROW_SAMPLE, labelsMat);
 
     //svm->setGamma(3);
-    //svm->setKernel(cv::ml::SVM::RBF);
+    svm->setKernel(cv::ml::SVM::RBF);
     //svm->setType(cv::ml::SVM::C_SVC);
-    svm->setGamma(1);
+    svm->setGamma(3);
     svm->trainAuto(data);
     svm->save((path + "svm.xml").toStdString());
 
-    Mat image = Mat::zeros(1000, 1000, CV_8UC3);
 
-    Vec3b green(0,255,0), blue (255,0,0);
-    // Show the decision regions given by the SVM
-    for (int i = 0; i < image.rows; ++i)
-        for (int j = 0; j < image.cols; ++j)
-        {
-            Mat sampleMat = (Mat_<float>(1,2) << j/1000.0,i/1000.0);
-            float response = svm->predict(sampleMat);
-
-            if (response == 1)
-                image.at<Vec3b>(i,j)  = green;
-            else if(response == -1)
-                 image.at<Vec3b>(i,j)  = blue;
-        }
-
-    // Show support vectors
-        int thickness = 2;
-        int lineType  = 8;
-        int c     = svm->getSupportVectors().rows;
-        qDebug() << "Hello" << c;
-
-        for (int i = 0; i < c; ++i)
-        {
-            Mat v = svm->getSupportVectors().row(i);
-            circle( image,  Point(v.at<double>(0, 0) * -1000, v.at<double>(0, 1) * -1000),   6,  Scalar(128, 128, 128), thickness, lineType);
-        }
-
-    imshow("SVM Simple Example", image); // show it to the user
-    waitKey(0);
 }

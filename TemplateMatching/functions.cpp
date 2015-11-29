@@ -5,7 +5,7 @@
 #include "configuration.h"
 #include <vector>
 
-Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT], cv::Mat background, Machines machines){
+Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT], cv::Mat background){
     cv::Mat imageTransformed = image;
     cv::Mat imageHue;
     cv::Mat backgroundMask1;
@@ -252,7 +252,7 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
     cv::Size temSize(tem->getWidth(), tem->getHeigth());
     QList<cv::Mat> skeletons;
     QList<QList<int> > listPossibleNumbers;
-    cv::Mat finalImage = grayScaleFilteredComponentsImage;
+    cv::Mat finalImage = image;
 
     Output* output = new Output(finalImage, tem);
     QMap<long, double> correlations; // first, connected component, then template, then rotation
@@ -518,14 +518,14 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
     return output;
 }
 
-Output* basicTemplateMatching(cv::Mat image, Template* tem, cv::Mat background, Machines machines){
+Output* basicTemplateMatching(cv::Mat image, Template* tem, cv::Mat background){
     int modules[MODULES_COUNT];
     modules[TEMPLATE_MATCHING] = 7;
     modules[CENTER_MASS] = 0;
     modules[HALVES_CENTER_MASS_VERTI] = 0;
     modules[HALVES_CENTER_MASS_HORI] = 0;
     modules[HISTOGRAMS] = 3000;
-    return templateMatching(image, tem, modules, background, machines);
+    return templateMatching(image, tem, modules, background);
 }
 
 int colorDistance(cv::Vec3b c1, cv::Vec3b c2){

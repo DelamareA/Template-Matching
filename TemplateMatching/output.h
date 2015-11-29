@@ -6,6 +6,9 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include "template.h"
 
+#define MERGE_DISTANCE_X 50
+#define MERGE_DISTANCE_Y 20
+
 class Output{
 
     public:

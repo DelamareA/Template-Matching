@@ -2,15 +2,36 @@
 
 
 Output::Output(cv::Mat image, Template* tem){
-    cvtColor(image, baseImage, CV_GRAY2BGR);
-    //baseImage = image;
+    //cvtColor(image, baseImage, CV_GRAY2BGR);
+    baseImage = image;
     this->tem = tem;
 }
 
 void Output::addData(unsigned int x, unsigned int y, unsigned int num){
-    listX.append(x);
-    listY.append(y);
-    listNum.append(num);
+
+    bool merged = false;
+    for (int i = 0; i < listX.size(); i++){
+        if (abs(x-listX[i]) < MERGE_DISTANCE_X && abs(y-listY[i]) < MERGE_DISTANCE_Y){
+            merged = true;
+
+            /*
+             * If the number on the left is a '1', then the real number must be
+             * greater than 10, otherwise, it is probably a mistake, so we discard it
+            */
+            if (num == 1 && x < listX[i]){
+                listNum[i] += 10;
+            }
+            else if (listNum[i] == 1 && x > listX[i]){
+                listNum[i] = 10 + num;
+            }
+        }
+    }
+
+    if (!merged){
+        listX.append(x);
+        listY.append(y);
+        listNum.append(num);
+    }
 }
 
 cv::Mat Output::getImage(){

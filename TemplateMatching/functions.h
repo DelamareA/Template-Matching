@@ -15,13 +15,9 @@
 
 enum {TEMPLATE_MATCHING, CENTER_MASS, HALVES_CENTER_MASS_VERTI, HALVES_CENTER_MASS_HORI, HISTOGRAMS};
 
-struct Machines{
-    cv::Ptr<cv::ml::SVM> m3_5;
-};
+Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT], cv::Mat background);
 
-Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT], cv::Mat background, Machines machines);
-
-Output* basicTemplateMatching(cv::Mat image, Template* tem, cv::Mat background, Machines machines);
+Output* basicTemplateMatching(cv::Mat image, Template* tem, cv::Mat background);
 
 int colorDistance(cv::Vec3b c1, cv::Vec3b c2);
 

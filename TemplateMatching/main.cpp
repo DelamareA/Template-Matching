@@ -7,6 +7,8 @@
 #include "output.h"
 #include "configuration.h"
 
+using namespace cv;
+
 int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bool isVideo, QString templatesPath, QString outputPath, QString configPath, QString backgroundPath);
 
 int main(int argc, char *argv[]){
@@ -20,14 +22,21 @@ int main(int argc, char *argv[]){
     QString configPath = "config.txt";
     QString backgroundPath = "backgroundBlackBorders2.png";
 
-
-    /*QList<int> numbers;
-    numbers.push_back(3);
-    numbers.push_back(5);
-    generateDataSet(numbers, 100, 36, 45, "svm/3-5/");
-
-    generateSVM("svm/3-5/", M3_5);*/
-
+    /*for (int i = 0; i < 10; i++){
+        for (int j = 0; j < 10; j++){
+            if (i == 1 || i == 2 || i == 3 || i == 5 || i == 7){
+                if (j == 1 || j == 2 || j == 3 || j == 5 || j == 7){
+                    if (i < j){
+                        QList<int> numbers;
+                        numbers.push_back(i);
+                        numbers.push_back(j);
+                        generateDataSet(numbers, 100, 36, 45, "svm/" + QString::number(i) + "-" + QString::number(j) + "/");
+                        generateSVM("svm/" + QString::number(i) + "-" + QString::number(j) + "/", M0);
+                    }
+                }
+            }
+        }
+    }*/
 
     return loadAndRun(imagePath, videoPath, outputVideoPath, isVideo, templatesPath, outputPath, configPath, backgroundPath);
 }
@@ -40,42 +49,23 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
 
     Output* out = 0;
 
+    QList<int> zeroHole;
+    zeroHole.push_back(1);
+    zeroHole.push_back(2);
+    zeroHole.push_back(3);
+    zeroHole.push_back(5);
+    zeroHole.push_back(7);
+
     Machines machines;
-    machines.m3_5 = cv::ml::StatModel::load<cv::ml::SVM>("svm/3-5/svm.xml");
-
-    /*int dim = Skeleton::getDim(M3_5);
-
-    for (int i = 00; i < 200; i++){
-        cv::Mat image;
-        image = cv::imread(QString("svm/3-5/dataset/" + QString::number(i) + ".png").toStdString(), CV_LOAD_IMAGE_COLOR);
-
-        cv::Mat grayScaleImage;
-        cvtColor(image, grayScaleImage, CV_BGR2GRAY);
-
-        cv::Mat skeleton = thinningGuoHall(grayScaleImage);
-        Skeleton ske(skeleton, grayScaleImage);
-
-        qDebug() << i << " : Num : " << ske.listLineEnds.size();
-        for (int k = 0; k < ske.listLineEnds.size(); k++){
-            qDebug() << i << " : " << ske.listLineEnds[k].x;
-            qDebug() << i << " : " << ske.listLineEnds[k].y;
+    for (int i = 0; i < 10; i++){
+        for (int j = i+1; j < 10; j++){
+            if (zeroHole.contains(i) && zeroHole.contains(j)){
+                machines.m[i][j] = cv::ml::SVM::load<cv::ml::SVM>(QString("svm/" + QString::number(i) + "-" + QString::number(j) + "/svm.xml").toStdString());
+            }
         }
+    }
 
-        QList<double> vect = ske.vectorization(M3_5);
-
-        float sampleData[dim];
-
-        for (int i = 0; i < dim; i++){
-            sampleData[i] = vect[i];
-        }
-
-        cv::Mat sampleMat(1, dim, CV_32FC1, sampleData);
-        float response = machines.m3_5->predict(sampleMat);
-
-        qDebug() << response;
-    }*/
-
-
+    Skeleton::setMachines(machines);
 
     if (isVideo){
         cv::VideoCapture inputVideo(videoPath.toStdString());
@@ -113,7 +103,7 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
 
             qDebug() << "Start frame : " << frameCount;
 
-            out = basicTemplateMatching(image, templateNumbers, background, machines);
+            out = basicTemplateMatching(image, templateNumbers, background);
             outputVideo << out->getImage();
             frameCount++;
             outputText += out->toString();
@@ -148,7 +138,7 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
             qDebug() << "Image and background have not the same size";
         }
 
-        out = basicTemplateMatching(image, templateNumbers, background, machines);
+        out = basicTemplateMatching(image, templateNumbers, background);
 
         cv::namedWindow("Output");
         cv::imshow("Output", out->getImage());

@@ -1,6 +1,8 @@
 #include "skeleton.h"
 #include <QDebug>
 
+Machines Skeleton::machines;
+
 Skeleton::Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage){
 
     //QList<LabeledPoint> startList;
@@ -339,7 +341,7 @@ Skeleton::Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage){
 QList<int> Skeleton::possibleNumbers(){
     QList<int> list;
 
-    if (listHoles.size() > 2 || listJunctions.size() > 5 || listLineEnds.size() > 5){
+    /*if (listHoles.size() > 2 || listJunctions.size() > 5 || listLineEnds.size() > 5){
         // certainly a bad 'catch'
     }
     if (listHoles.size() == 0){
@@ -355,6 +357,98 @@ QList<int> Skeleton::possibleNumbers(){
             }
             else {
                 list.push_back(1);
+            }
+        }
+        else {
+            list.push_back(1);
+            list.push_back(2);
+            list.push_back(5);
+            list.push_back(7);
+        }
+    }
+    else if (listHoles.size() == 1){
+        if (listHoles[0].x > 0.35 && listHoles[0].x < 0.65 && listHoles[0].y > 0.35 && listHoles[0].y < 0.65){
+            if (listJunctions.size() + listLineEnds.size() < 3){
+                list.push_back(0);
+            }
+            else {
+                list.push_back(4);
+            }
+        }
+        else if (listHoles.size() == 1 && listJunctions.size() >= 1 && listLineEnds.size() >= 1){
+            if (listHoles[0].y > listLineEnds[0].y){
+                list.push_back(6);
+            }
+            else {
+                list.push_back(9);
+            }
+        }
+        else {
+            list.push_back(0);
+            list.push_back(4);
+            list.push_back(6);
+            list.push_back(9);
+        }
+    }
+    else if (listHoles.size() == 2){
+        list.push_back(8);
+    }
+    else { // if the 'number' is close to a 'normal' number, but not a perfect match, we try all of them
+        for (int i = 0; i < TEMPLATES_COUNT; i++){
+            list.push_back(i);
+        }
+    }*/
+
+    if (listHoles.size() > 2 || listJunctions.size() > 5 || listLineEnds.size() > 5){
+            // certainly a bad 'catch'
+    }
+    if (listHoles.size() == 0){
+        if (listLineEnds.size() >= 2){
+            QList<int> zeroHole;
+            zeroHole.push_back(1);
+            zeroHole.push_back(2);
+            zeroHole.push_back(3);
+            zeroHole.push_back(5);
+            zeroHole.push_back(7);
+
+            int dim = Skeleton::getDim(M0);
+
+            QList<double> vect = vectorization(M0);
+
+            float sampleData[dim];
+
+            for (int i = 0; i < dim; i++){
+                sampleData[i] = vect[i];
+            }
+
+            cv::Mat sampleMat(1, dim, CV_32FC1, sampleData);
+
+            int maxVote = 0;
+            int intMaxVote = -1;
+
+            for (int i = 0; i < 10; i++){
+                int vote = 0;
+                for (int j = 0; j < 10; j++){
+                    if (i != j && zeroHole.contains(i) && zeroHole.contains(j)){
+                        float response = Skeleton::machines.m[min(i,j)][max(i,j)]->predict(sampleMat);
+
+                        if ((response == 0.0 && i == min(i,j)) || (response == 1.0 && i == max(i,j))){
+                            vote++;
+                        }
+                    }
+                }
+
+                if (vote > maxVote){
+                    maxVote = vote;
+                    intMaxVote = i;
+                }
+            }
+
+            if (intMaxVote == -1){
+                qDebug() << "Error : No vote is greater than 0";
+            }
+            else {
+                list.push_back(intMaxVote);
             }
         }
         else {
@@ -452,8 +546,8 @@ QList<double> Skeleton::vectorization(int type) {
 
 int Skeleton::getDim(int type){
     switch(type){
-        case M3_5 :
-        return VECTOR_DIMENSION_3_5;
+        case M0 :
+        return VECTOR_DIMENSION_0;
 
          default :
         return VECTOR_DIMENSION;
@@ -462,8 +556,8 @@ int Skeleton::getDim(int type){
 
 int Skeleton::getEndCount(int type){
     switch(type){
-        case M3_5 :
-        return END_3_5;
+        case M0 :
+        return END_0;
 
          default :
         return END;
@@ -472,8 +566,8 @@ int Skeleton::getEndCount(int type){
 
 int Skeleton::getJunctionCount(int type){
     switch(type){
-        case M3_5 :
-        return JUNCTION_3_5;
+        case M0 :
+        return JUNCTION_0;
 
          default :
         return JUNCTION;
@@ -482,6 +576,18 @@ int Skeleton::getJunctionCount(int type){
 
 double Skeleton::min(double a, double b){
     return a < b ? a : b;
+}
+
+double Skeleton::max(double a, double b){
+    return a > b ? a : b;
+}
+
+int Skeleton::min(int a, int b){
+    return a < b ? a : b;
+}
+
+int Skeleton::max(int a, int b){
+    return a > b ? a : b;
 }
 
 QList<cv::Point2d> Skeleton::sort(QList<cv::Point2d> list){
@@ -509,4 +615,8 @@ QList<cv::Point2d> Skeleton::sort(QList<cv::Point2d> list){
     }
 
     return result;
+}
+
+void Skeleton::setMachines(Machines newMachines){
+    Skeleton::machines = newMachines;
 }
