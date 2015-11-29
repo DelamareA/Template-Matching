@@ -122,7 +122,7 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
             if (shirtFilteredImage.at<uchar>(y, x) == 255){
                 shirtFilteredImage.at<uchar>(y, x) = 0;
                 for (int i = 0; i < shirtFilteredContours.size(); i++){
-                    if (pointPolygonTest(shirtFilteredContours[i], cv::Point2f(x, y), true) >= 5 && y > shirtFilteredRects[i].y + shirtFilteredRects[i].height * 0.2 && y < shirtFilteredRects[i].y + shirtFilteredRects[i].height * 0.6){
+                    if (pointPolygonTest(shirtFilteredContours[i], cv::Point2f(x, y), true) >= 5 && y > shirtFilteredRects[i].y + shirtFilteredRects[i].height * 0.2 && y < shirtFilteredRects[i].y + shirtFilteredRects[i].height * 0.65){
                         shirtFilteredImage.at<uchar>(y, x) = 255;
                     }
                 }
@@ -163,7 +163,7 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
             if (grayScaleImage3.at<uchar>(y, x) == 255){
                 grayScaleImage3.at<uchar>(y, x) = 0;
                 for (int i = 0; i < shirtFilteredContours.size(); i++){
-                    if (pointPolygonTest(shirtFilteredContours[i], cv::Point2f(x,y), true) >= 5 && y > shirtFilteredRects[i].y + shirtFilteredRects[i].height * 0.2 && y < shirtFilteredRects[i].y + shirtFilteredRects[i].height * 0.6){
+                    if (pointPolygonTest(shirtFilteredContours[i], cv::Point2f(x,y), true) >= 5 && y > shirtFilteredRects[i].y + shirtFilteredRects[i].height * 0.2 && y < shirtFilteredRects[i].y + shirtFilteredRects[i].height * 0.65 ){
                         grayScaleImage3.at<uchar>(y, x) = 255;
                     }
                 }
@@ -252,7 +252,7 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
     cv::Size temSize(tem->getWidth(), tem->getHeigth());
     QList<cv::Mat> skeletons;
     QList<QList<int> > listPossibleNumbers;
-    cv::Mat finalImage = image;
+    cv::Mat finalImage = grayScaleFilteredComponentsImage;
 
     Output* output = new Output(finalImage, tem);
     QMap<long, double> correlations; // first, connected component, then template, then rotation
@@ -301,7 +301,7 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
         listPossibleNumbers.push_back(ske.possibleNumbers());
 
         //qDebug() << ske.listJunctions.size();
-        //qDebug() << ske.listLineEnds.size();
+
         //qDebug() << ske.listHoles.size();
 
         for (int j = 0; j < TEMPLATES_COUNT; j++){

@@ -22,21 +22,42 @@ int main(int argc, char *argv[]){
     QString configPath = "config.txt";
     QString backgroundPath = "backgroundBlackBorders2.png";
 
-    /*for (int i = 0; i < 10; i++){
-        for (int j = 0; j < 10; j++){
-            if (i == 1 || i == 2 || i == 3 || i == 5 || i == 7){
-                if (j == 1 || j == 2 || j == 3 || j == 5 || j == 7){
-                    if (i < j){
-                        QList<int> numbers;
-                        numbers.push_back(i);
-                        numbers.push_back(j);
-                        generateDataSet(numbers, 100, 36, 45, "svm/" + QString::number(i) + "-" + QString::number(j) + "/");
-                        generateSVM("svm/" + QString::number(i) + "-" + QString::number(j) + "/", M0);
-                    }
-                }
+    QList<int> zeroHole;
+    zeroHole.push_back(1);
+    zeroHole.push_back(2);
+    zeroHole.push_back(3);
+    zeroHole.push_back(5);
+    zeroHole.push_back(7);
+
+    for (int i = 0; i < 10; i++){
+        for (int j = i+1; j < 10; j++){
+            if (zeroHole.contains(i) && zeroHole.contains(j)){
+                QList<int> numbers;
+                numbers.push_back(i);
+                numbers.push_back(j);
+                generateDataSet(numbers, 100, 36, 45, "svm/" + QString::number(i) + "-" + QString::number(j) + "/");
+                generateSVM("svm/" + QString::number(i) + "-" + QString::number(j) + "/", M0);
             }
         }
-    }*/
+    }
+
+    QList<int> oneHole;
+    oneHole.push_back(0);
+    oneHole.push_back(4);
+    oneHole.push_back(6);
+    oneHole.push_back(9);
+
+    for (int i = 0; i < 10; i++){
+        for (int j = i+1; j < 10; j++){
+            if (oneHole.contains(i) && oneHole.contains(j)){
+                QList<int> numbers;
+                numbers.push_back(i);
+                numbers.push_back(j);
+                generateDataSet(numbers, 100, 36, 45, "svm/" + QString::number(i) + "-" + QString::number(j) + "/");
+                generateSVM("svm/" + QString::number(i) + "-" + QString::number(j) + "/", M1);
+            }
+        }
+    }
 
     return loadAndRun(imagePath, videoPath, outputVideoPath, isVideo, templatesPath, outputPath, configPath, backgroundPath);
 }

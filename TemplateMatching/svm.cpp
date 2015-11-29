@@ -40,11 +40,11 @@ void generateDataSet(QList<int> numbers, int countPerNumber, int width, int heig
                 break;
 
                 case 1:
-                painter.setFont(QFont("Courrier", size));
+                painter.setFont(QFont("Arial", size));
                 break;
 
                 case 2:
-                painter.setFont(QFont("Calibri", size));
+                painter.setFont(QFont("Arial", size));
                 break;
             }
 

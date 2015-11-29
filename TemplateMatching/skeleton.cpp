@@ -330,7 +330,9 @@ Skeleton::Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage){
         }
     } while (!done);
 
+    massCenter = getMassCenter(skeletonizedImage);
 
+    total = getCount(skeletonizedImage);
 
     listLineEnds = sort(listLineEnds);
     listHoles = sort(listHoles);
@@ -438,6 +440,8 @@ QList<int> Skeleton::possibleNumbers(){
                     }
                 }
 
+                qDebug() << i << ": " << vote;
+
                 if (vote > maxVote){
                     maxVote = vote;
                     intMaxVote = i;
@@ -495,24 +499,14 @@ QList<int> Skeleton::possibleNumbers(){
 }
 
 QList<double> Skeleton::vectorization(int type) {
-    // 0 -> num ends
-    // 1 -> end 1 x
-    // 2 -> end 1 y
-    // 3 -> end 2 x
-    // 4 -> end 2 y
-    // 5 -> end 3 x
-    // 6 -> end 3 y
-    // 7 -> num junc
-    // 8 -> junc 1 x
-    // 9 -> junc 1 y
-    // 10 -> junc 2 x
-    // 11 -> junc 2 y
-
     QList<double> result;
 
     int count = getDim(type);
-    int end = getEndCount(type);
-    int junction = getJunctionCount(type);
+    int endCount = getEndCount(type);
+    int junctionCount = getJunctionCount(type);
+    int holeCount = getHoleCount(type);
+    int massCenterCount = getMassCenterCount(type);
+    int totalCount = getTotalCount(type);
 
     int index = 0;
 
@@ -520,9 +514,7 @@ QList<double> Skeleton::vectorization(int type) {
         result.push_back(0.0001);
     }
 
-    //result[0] = (min(listLineEnds.size() / 3.0, 1.0));
-
-    for (int i = 0; i < listLineEnds.size() && i < end; i++){
+    for (int i = 0; i < listLineEnds.size() && i < endCount; i++){
         result[index] = (listLineEnds[i].x);
         index++;
 
@@ -530,9 +522,7 @@ QList<double> Skeleton::vectorization(int type) {
         index++;
     }
 
-    //result[7] = (min(listJunctions.size() / 2.0, 1.0));
-
-    for (int i = 0; i < listJunctions.size() && i < junction; i++){
+    for (int i = 0; i < listJunctions.size() && i < junctionCount; i++){
         result[index] = (listJunctions[i].x);
         index++;
 
@@ -540,7 +530,72 @@ QList<double> Skeleton::vectorization(int type) {
         index++;
     }
 
+    for (int i = 0; i < listJunctions.size() && i < holeCount; i++){
+        result[index] = (listHoles[i].x);
+        index++;
+
+        result[index] = (listHoles[i].y);
+        index++;
+    }
+
+    for (int i = 0; i < massCenterCount; i++){
+        result[index] = (massCenter.x);
+        index++;
+
+        result[index] = (massCenter.y);
+        index++;
+    }
+
+    for (int i = 0; i < totalCount; i++){
+        result[index] = (total);
+        index++;
+    }
+
     return result;
+}
+
+cv::Point2d Skeleton::getMassCenter(cv::Mat ske){
+    int sumX = 0;
+    int sumY = 0;
+    double count = 0;
+    for (int i = 0; i < ske.cols; i++){
+        for (int j = 0; j < ske.rows; j++){
+            if (ske.at<uchar>(j,i) == 255){
+                sumX += i;
+                sumY += j;
+                count ++;
+            }
+        }
+    }
+
+    double tempX = (sumX / count) / ske.cols;
+    double tempY = (sumY / count) / ske.rows;
+
+    tempX = (tempX - 0.5) * 3;
+
+    if (tempX < 0){
+        tempX = 0;
+    }
+    else if (tempX > 1){
+        tempX = 1;
+    }
+
+    return cv::Point2d(tempX, tempY);
+}
+
+double Skeleton::getCount(cv::Mat ske){
+    double count = 0;
+    for (int i = 0; i < ske.cols; i++){
+        for (int j = 0; j < ske.rows; j++){
+            if (ske.at<uchar>(j,i) == 255){
+                count ++;
+            }
+        }
+    }
+
+    double tempCount = count / (ske.cols * ske.rows);
+
+    return min(tempCount * 20, 1.0);
 }
 
 
@@ -550,7 +605,7 @@ int Skeleton::getDim(int type){
         return VECTOR_DIMENSION_0;
 
          default :
-        return VECTOR_DIMENSION;
+        return VECTOR_DIMENSION_1;
     }
 }
 
@@ -560,7 +615,7 @@ int Skeleton::getEndCount(int type){
         return END_0;
 
          default :
-        return END;
+        return END_1;
     }
 }
 
@@ -570,7 +625,37 @@ int Skeleton::getJunctionCount(int type){
         return JUNCTION_0;
 
          default :
-        return JUNCTION;
+        return JUNCTION_1;
+    }
+}
+
+int Skeleton::getHoleCount(int type){
+    switch(type){
+        case M0 :
+        return HOLE_0;
+
+         default :
+        return HOLE_1;
+    }
+}
+
+int Skeleton::getMassCenterCount(int type){
+    switch(type){
+        case M0 :
+        return MASS_CENTER_0;
+
+         default :
+        return MASS_CENTER_1;
+    }
+}
+
+int Skeleton::getTotalCount(int type){
+    switch(type){
+        case M0 :
+        return TOTAL_0;
+
+         default :
+        return TOTAL_1;
     }
 }
 
