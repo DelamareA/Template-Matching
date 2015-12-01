@@ -14,15 +14,17 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
 int main(int argc, char *argv[]){
 
     bool isVideo = false;
-    QString imagePath = "screenshot5.png";
-    QString videoPath = "28.mp4";
+    QString imagePath = "screenshot4.png";
+    QString videoPath = "29.mp4";
     QString outputVideoPath = "output.avi";
     QString templatesPath = "templatesNumber4/";
     QString outputPath = "output.txt";
     QString configPath = "config.txt";
     QString backgroundPath = "backgroundBlackBorders2.png";
 
-    QList<int> zeroHole;
+    // Below is the code to generate the datasets to train the svm
+
+    /*QList<int> zeroHole;
     zeroHole.push_back(1);
     zeroHole.push_back(2);
     zeroHole.push_back(3);
@@ -57,7 +59,7 @@ int main(int argc, char *argv[]){
                 generateSVM("svm/" + QString::number(i) + "-" + QString::number(j) + "/", M1);
             }
         }
-    }
+    }*/
 
     return loadAndRun(imagePath, videoPath, outputVideoPath, isVideo, templatesPath, outputPath, configPath, backgroundPath);
 }
@@ -98,7 +100,7 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
         cv::Size size = cv::Size((int) inputVideo.get(CV_CAP_PROP_FRAME_WIDTH), (int) inputVideo.get(CV_CAP_PROP_FRAME_HEIGHT));
 
         cv::VideoWriter outputVideo;
-        outputVideo.open(outputVideoPath.toStdString(), -1, 4, size, true);
+        outputVideo.open(outputVideoPath.toStdString(), -1, 1, size, true);
 
         if (!outputVideo.isOpened()){
             qDebug() << "Could not open video output";

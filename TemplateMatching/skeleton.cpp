@@ -130,7 +130,11 @@ Skeleton::Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage){
     std::vector<std::vector<cv::Point> > contours;
     std::vector<cv::Vec4i> hierarchy;
 
-    findContours(normalImage.clone(), contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
+    cv::Mat imageClone = normalImage.clone();
+    cv::Mat dilateElement = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3), cv::Point(1, 1));
+    cv::dilate(imageClone, imageClone, dilateElement);
+
+    findContours(imageClone.clone(), contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
 
     cv::Mat invertedImage = normalImage.clone();
 
@@ -140,7 +144,7 @@ Skeleton::Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage){
     else {
         for (int x = 0; x < normalImage.cols; x++){
             for (int y = 0; y < normalImage.rows; y++){
-                if (normalImage.at<uchar>(y, x) == 255){
+                if (imageClone.at<uchar>(y, x) == 255){
                     invertedImage.at<uchar>(y, x) = 0;
                 }
                 else if (pointPolygonTest(contours[0], cv::Point2f(x,y), true) >= 0){
@@ -167,7 +171,7 @@ Skeleton::Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage){
         cv::Point2d point(xNorm, yNorm);
 
 
-        if (rect.width > 3 && rect.height > 3){
+        if (rect.width > 2 && rect.height > 2){
             listHoles.push_back(point);
         }
         else {
@@ -333,6 +337,8 @@ Skeleton::Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage){
     massCenter = getMassCenter(skeletonizedImage);
 
     total = getCount(skeletonizedImage);
+
+    setParts(skeletonizedImage);
 
     listLineEnds = sort(listLineEnds);
     listHoles = sort(listHoles);
@@ -507,6 +513,7 @@ QList<double> Skeleton::vectorization(int type) {
     int holeCount = getHoleCount(type);
     int massCenterCount = getMassCenterCount(type);
     int totalCount = getTotalCount(type);
+    int partCount = getPartCount(type);
 
     int index = 0;
 
@@ -546,9 +553,13 @@ QList<double> Skeleton::vectorization(int type) {
         index++;
     }
 
-    for (int i = 0; i < totalCount; i++){
-        result[index] = (total);
-        index++;
+    for (int i = 0; i < partCount; i++){
+        for (int x = 0; x < PART_X; x++){
+            for (int y = 0; y < PART_Y; y++){
+                result[index] = parts[x][y];
+                index++;
+            }
+        }
     }
 
     return result;
@@ -596,6 +607,36 @@ double Skeleton::getCount(cv::Mat ske){
     double tempCount = count / (ske.cols * ske.rows);
 
     return min(tempCount * 20, 1.0);
+}
+
+void Skeleton::setParts(cv::Mat ske){
+    for (int x = 0; x < PART_X; x++){
+        for (int y = 0; y < PART_Y; y++){
+            parts[x][y] = 0;
+        }
+    }
+
+    for (int i = 0; i < ske.cols; i++){
+        for (int j = 0; j < ske.rows; j++){
+            if (ske.at<uchar>(j,i) == 255){
+                parts[(PART_X * i) / ske.cols][(PART_Y * j) / ske.rows] ++;
+            }
+        }
+    }
+
+    // normalization
+    for (int x = 0; x < PART_X; x++){
+        for (int y = 0; y < PART_Y; y++){
+            parts[x][y] = (parts[x][y] / ((ske.cols / PART_X) * (ske.rows / PART_Y)));
+        }
+    }
+
+    // increase value, for better detection results, otherwisw, each number is very close to 0
+    for (int x = 0; x < PART_X; x++){
+        for (int y = 0; y < PART_Y; y++){
+            parts[x][y] = min(parts[x][y] * 20, 1.0);
+        }
+    }
 }
 
 
@@ -656,6 +697,16 @@ int Skeleton::getTotalCount(int type){
 
          default :
         return TOTAL_1;
+    }
+}
+
+int Skeleton::getPartCount(int type){
+    switch(type){
+        case M0 :
+        return PARTS_0;
+
+         default :
+        return PARTS_1;
     }
 }
 

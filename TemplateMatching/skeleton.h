@@ -13,26 +13,31 @@
 #define FAKE_LOOPS_DISTANCE 0.15
 #define JUNCTION_MARGIN 0.05
 
-#define END_0 1
+#define PART_X 7
+#define PART_Y 7
+
+#define END_0 0
 #define END_1 1
 
 #define JUNCTION_0 0
-#define JUNCTION_1 1
+#define JUNCTION_1 0
 
 #define HOLE_0 0
-#define HOLE_1 1
+#define HOLE_1 0
 
 #define MASS_CENTER_0 0
 #define MASS_CENTER_1 0
 
-#define TOTAL_0 1
+#define TOTAL_0 0
 #define TOTAL_1 0
 
-#define VECTOR_DIMENSION_0 (2*END_0 + 2*JUNCTION_0 + 2*HOLE_0 + 2*MASS_CENTER_0 + TOTAL_0)
-#define VECTOR_DIMENSION_1 (2*END_1 + 2*JUNCTION_1 + 2*HOLE_1 + 2*MASS_CENTER_1 + TOTAL_1)
+#define PARTS_0 1
+#define PARTS_1 1
+
+#define VECTOR_DIMENSION_0 (2*END_0 + 2*JUNCTION_0 + 2*HOLE_0 + 2*MASS_CENTER_0 + TOTAL_0 + PART_X*PART_Y*PARTS_0)
+#define VECTOR_DIMENSION_1 (2*END_1 + 2*JUNCTION_1 + 2*HOLE_1 + 2*MASS_CENTER_1 + TOTAL_1 + PART_X*PART_Y*PARTS_1)
 
 enum {M0, M1};
-
 
 struct Machines{
     cv::Ptr<cv::ml::SVM> m[TEMPLATES_COUNT][TEMPLATES_COUNT];
@@ -58,6 +63,7 @@ class Skeleton {
         QList<double> vectorization(int type);
         cv::Point2d getMassCenter(cv::Mat ske);
         double getCount(cv::Mat ske);
+        void setParts(cv::Mat ske);
 
         static int getDim(int type);
         static int getEndCount(int type);
@@ -65,6 +71,7 @@ class Skeleton {
         static int getHoleCount(int type);
         static int getMassCenterCount(int type);
         static int getTotalCount(int type);
+        static int getPartCount(int type);
 
         static void setMachines(Machines newMachines);
 
@@ -76,6 +83,7 @@ class Skeleton {
         QList<cv::Point2d> listLineEnds;
         cv::Point2d massCenter;
         double total;
+        double parts[PART_X][PART_Y];
 
 
 };
