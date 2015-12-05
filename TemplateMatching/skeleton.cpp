@@ -346,7 +346,7 @@ Skeleton::Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage){
 
 }
 
-QList<int> Skeleton::possibleNumbers(){
+QList<int> Skeleton::possibleNumbers(QList<int> digitsOnField){
     QList<int> list;
 
     /*if (listHoles.size() > 2 || listJunctions.size() > 5 || listLineEnds.size() > 5){
@@ -407,11 +407,8 @@ QList<int> Skeleton::possibleNumbers(){
         }
     }*/
 
-    if (listHoles.size() > 2 || listJunctions.size() > 5 || listLineEnds.size() > 5){
-            // certainly a bad 'catch'
-    }
-    if (listHoles.size() == 0){
-        if (listLineEnds.size() >= 2){
+    if (HOLE_SEPARATION){
+        if (listHoles.size() == 0){
             QList<int> zeroHole;
             zeroHole.push_back(1);
             zeroHole.push_back(2);
@@ -446,7 +443,7 @@ QList<int> Skeleton::possibleNumbers(){
                     }
                 }
 
-                qDebug() << i << ": " << vote;
+                //qDebug() << i << ": " << vote;
 
                 if (vote > maxVote){
                     maxVote = vote;
@@ -461,43 +458,105 @@ QList<int> Skeleton::possibleNumbers(){
                 list.push_back(intMaxVote);
             }
         }
-        else {
-            list.push_back(1);
-            list.push_back(2);
-            list.push_back(5);
-            list.push_back(7);
-        }
-    }
-    else if (listHoles.size() == 1){
-        if (listHoles[0].x > 0.35 && listHoles[0].x < 0.65 && listHoles[0].y > 0.35 && listHoles[0].y < 0.65){
-            if (listJunctions.size() + listLineEnds.size() < 3){
-                list.push_back(0);
+        else if (listHoles.size() == 1){
+            QList<int> oneHole;
+            oneHole.push_back(0);
+            oneHole.push_back(4);
+            oneHole.push_back(6);
+            oneHole.push_back(9);
+
+            int dim = Skeleton::getDim(M1);
+
+            QList<double> vect = vectorization(M1);
+
+            float sampleData[dim];
+
+            for (int i = 0; i < dim; i++){
+                sampleData[i] = vect[i];
+            }
+
+            cv::Mat sampleMat(1, dim, CV_32FC1, sampleData);
+
+            int maxVote = 0;
+            int intMaxVote = -1;
+
+            for (int i = 0; i < 10; i++){
+                int vote = 0;
+                for (int j = 0; j < 10; j++){
+                    if (i != j && oneHole.contains(i) && oneHole.contains(j)){
+                        float response = Skeleton::machines.m[min(i,j)][max(i,j)]->predict(sampleMat);
+
+                        if ((response == 0.0 && i == min(i,j)) || (response == 1.0 && i == max(i,j))){
+                            vote++;
+                        }
+                    }
+                }
+
+                //qDebug() << i << ": " << vote;
+
+                if (vote > maxVote){
+                    maxVote = vote;
+                    intMaxVote = i;
+                }
+            }
+
+            if (intMaxVote == -1){
+                qDebug() << "Error : No vote is greater than 0";
             }
             else {
-                list.push_back(4);
+                list.push_back(intMaxVote);
             }
         }
-        else if (listHoles.size() == 1 && listJunctions.size() >= 1 && listLineEnds.size() >= 1){
-            if (listHoles[0].y > listLineEnds[0].y){
-                list.push_back(6);
+        else if (listHoles.size() == 2){
+            list.push_back(8);
+        }
+        else { // if the 'number' is close to a 'normal' number, but not a perfect match, we try all of them
+            for (int i = 0; i < TEMPLATES_COUNT; i++){
+                list.push_back(i);
             }
-            else {
-                list.push_back(9);
+        }
+    }
+    else {
+        int dim = Skeleton::getDim(M0);
+
+        QList<double> vect = vectorization(M0);
+
+        float sampleData[dim];
+
+        for (int i = 0; i < dim; i++){
+            sampleData[i] = vect[i];
+        }
+
+        cv::Mat sampleMat(1, dim, CV_32FC1, sampleData);
+
+        int maxVote = 0;
+        int intMaxVote = -1;
+
+        for (int i = 0; i < 10; i++){
+            int vote = 0;
+            for (int j = 0; j < 10; j++){
+                if (i != j && digitsOnField.contains(i) && digitsOnField.contains(j)) {
+                    float response = Skeleton::machines.m[min(i,j)][max(i,j)]->predict(sampleMat);
+
+                    if ((response == 0.0 && i == min(i,j)) || (response == 1.0 && i == max(i,j))){
+                        vote++;
+                    }
+                }
             }
+
+            //qDebug() << i << ": " << vote;
+
+            if (vote > maxVote){
+                maxVote = vote;
+                intMaxVote = i;
+            }
+        }
+
+        if (intMaxVote == -1){
+            qDebug() << "Error : No vote is greater than 0";
         }
         else {
-            list.push_back(0);
-            list.push_back(4);
-            list.push_back(6);
-            list.push_back(9);
-        }
-    }
-    else if (listHoles.size() == 2){
-        list.push_back(8);
-    }
-    else { // if the 'number' is close to a 'normal' number, but not a perfect match, we try all of them
-        for (int i = 0; i < TEMPLATES_COUNT; i++){
-            list.push_back(i);
+            list.push_back(intMaxVote);
         }
     }
 

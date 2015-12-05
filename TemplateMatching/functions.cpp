@@ -5,7 +5,7 @@
 #include "configuration.h"
 #include <vector>
 
-Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT], cv::Mat background){
+Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT], cv::Mat background, QList<int> digitsOnField){
     cv::Mat imageTransformed = image;
     cv::Mat blurredImage;
     cv::Mat imageHue;
@@ -345,7 +345,7 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
         cv::imwrite(("temp/" + QString::number(i) + ".png").toStdString(), skeletons[skeletons.size()-1]);
 
         Skeleton ske(skeletons[skeletons.size()-1], possibleNumbers[i]);
-        listPossibleNumbers.push_back(ske.possibleNumbers());
+        listPossibleNumbers.push_back(ske.possibleNumbers(digitsOnField));
 
         //qDebug() << ske.listJunctions.size();
 
@@ -565,14 +565,14 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
     return output;
 }
 
-Output* basicTemplateMatching(cv::Mat image, Template* tem, cv::Mat background){
+Output* basicTemplateMatching(cv::Mat image, Template* tem, cv::Mat background, QList<int> digitsOnField){
     int modules[MODULES_COUNT];
     modules[TEMPLATE_MATCHING] = 7;
     modules[CENTER_MASS] = 0;
     modules[HALVES_CENTER_MASS_VERTI] = 0;
     modules[HALVES_CENTER_MASS_HORI] = 0;
     modules[HISTOGRAMS] = 3000;
-    return templateMatching(image, tem, modules, background);
+    return templateMatching(image, tem, modules, background, digitsOnField);
 }
 
 int colorDistance(cv::Vec3b c1, cv::Vec3b c2){

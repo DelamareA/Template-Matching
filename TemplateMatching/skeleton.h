@@ -22,7 +22,7 @@
 #define JUNCTION_0 0
 #define JUNCTION_1 0
 
-#define HOLE_0 0
+#define HOLE_0 2
 #define HOLE_1 0
 
 #define MASS_CENTER_0 0
@@ -36,6 +36,8 @@
 
 #define VECTOR_DIMENSION_0 (2*END_0 + 2*JUNCTION_0 + 2*HOLE_0 + 2*MASS_CENTER_0 + TOTAL_0 + PART_X*PART_Y*PARTS_0)
 #define VECTOR_DIMENSION_1 (2*END_1 + 2*JUNCTION_1 + 2*HOLE_1 + 2*MASS_CENTER_1 + TOTAL_1 + PART_X*PART_Y*PARTS_1)
+
+#define HOLE_SEPARATION 0
 
 enum {M0, M1};
 
@@ -54,7 +56,7 @@ class Skeleton {
         static Machines machines;
 
         Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage);
-        QList<int> possibleNumbers();
+        QList<int> possibleNumbers(QList<int> digitsOnField);
         QList<cv::Point2d> sort(QList<cv::Point2d> list);
         double min(double a, double b);
         double max(double a, double b);

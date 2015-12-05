@@ -15,9 +15,9 @@
 
 enum {TEMPLATE_MATCHING, CENTER_MASS, HALVES_CENTER_MASS_VERTI, HALVES_CENTER_MASS_HORI, HISTOGRAMS};
 
-Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT], cv::Mat background);
+Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT], cv::Mat background, QList<int> digitsOnField);
 
-Output* basicTemplateMatching(cv::Mat image, Template* tem, cv::Mat background);
+Output* basicTemplateMatching(cv::Mat image, Template* tem, cv::Mat background, QList<int> digitsOnField);
 
 int colorDistance(cv::Vec3b c1, cv::Vec3b c2);
 
@@ -35,6 +35,8 @@ void thinningGuoHallIteration(cv::Mat& im, int iter);
 
 void generateDataSet(QList<int> numbers, int countPerNumber, int width, int height, QString outputPath);
 void generateSVM(QString path, int type);
+
+void runOnDataSet(QList<int> digitsOnField);
 
 #endif // FUNCTIONS
 

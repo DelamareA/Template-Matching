@@ -99,7 +99,7 @@ void generateDataSet(QList<int> numbers, int countPerNumber, int width, int heig
                 getRectSubPix(rotated, rectSize, rect.center, cropped);
 
                 Mat resized;
-                resize(cropped, resized, Size(width, width));
+                resize(cropped, resized, Size(width, height));
 
                 imwrite(QString(outputPath + "dataset/" + QString::number(i * countPerNumber + j) + ".png").toStdString(), resized);
             }
