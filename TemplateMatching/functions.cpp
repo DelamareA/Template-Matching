@@ -12,7 +12,9 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
     cv::Mat blurredImageHue;
     cv::Mat backgroundMask1;
     cv::Mat grayScaleImage;
-    GaussianBlur(image, blurredImage, cv::Size(7, 7), 0, 0);
+    cv::Mat blurredBackground;
+    GaussianBlur(background, blurredBackground, cv::Size(3, 3), 0, 0);
+    GaussianBlur(image, blurredImage, cv::Size(3, 3), 0, 0);
     cvtColor(image, grayScaleImage, CV_BGR2GRAY);
     cvtColor(image, backgroundMask1, CV_BGR2GRAY);
     cvtColor(blurredImage, blurredImageHue, CV_BGR2HSV);
@@ -25,8 +27,8 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
 
     for (int x = 0; x < backgroundMask1.cols; x++){
         for (int y = 0; y < backgroundMask1.rows; y++){
-            cv::Vec3b intensity = imageTransformed.at<cv::Vec3b>(y, x);
-            cv::Vec3b backgroundPixel = background.at<cv::Vec3b>(y, x);
+            cv::Vec3b intensity = blurredImage.at<cv::Vec3b>(y, x);
+            cv::Vec3b backgroundPixel = blurredBackground.at<cv::Vec3b>(y, x);
 
             int distBackground = colorDistance(backgroundPixel, intensity);
 
@@ -56,6 +58,10 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
     for (unsigned int i = 0; i < backgroundContours.size(); i++){
         cv::Rect rect = minAreaRect(backgroundContours[i]).boundingRect();
         if (rect.width > 40 && rect.height > 50){
+
+            rect.y += rect.height * 0.2;
+            rect.height *= 0.3;
+
             if (rect.x < 0){
                 rect.x = 0;
             }
@@ -70,9 +76,6 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
                 rect.y = backgroundMask1.rows - rect.height;
             }
 
-            rect.y += rect.height * 0.1;
-            rect.height *= 0.5;
-
             backgroundFilteredRects.push_back(rect);
             backgroundFilteredContours.push_back(backgroundContours[i]);
         }
@@ -81,486 +84,32 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
     // just to display the image
 
     cv::Mat backgroundFilteredImage = backgroundMask2.clone();
+    cv::Mat backgroundFilteredImageColor = image.clone();
 
+
+    cv::Vec3b black;
+    black[0] = 0;
+    black[1] = 0;
+    black[2] = 0;
     for (int x = 0; x < backgroundFilteredImage.cols; x++){
         for (int y = 0; y < backgroundFilteredImage.rows; y++){
             if (backgroundMask2.at<uchar>(y, x) == 255){
                 backgroundFilteredImage.at<uchar>(y, x) = 0;
+                backgroundFilteredImageColor.at<cv::Vec3b>(y,x) = black;
                 for (int i = 0; i < backgroundFilteredContours.size(); i++){
-                    if (pointPolygonTest(backgroundFilteredContours[i], cv::Point2f(x, y), true) >= 0 && y >= backgroundFilteredRects[i].y && y < backgroundFilteredRects[i].y + backgroundFilteredRects[i].height){
+                    if (pointPolygonTest(backgroundFilteredContours[i], cv::Point2f(x, y), true) >= 5 && y >= backgroundFilteredRects[i].y && y < backgroundFilteredRects[i].y + backgroundFilteredRects[i].height){
                         backgroundFilteredImage.at<uchar>(y, x) = 255;
+                        backgroundFilteredImageColor.at<cv::Vec3b>(y,x) = image.at<cv::Vec3b>(y,x);
                     }
                 }
-            }
-        }
-    }
-
-    //EXTRACT SHIRT COLORS
-
-    cv::Mat shirtMask = backgroundFilteredImage.clone();
-
-    cv::Vec3b greenColor = Configuration::getGreenColor();
-    int maxGreenColorDistance = Configuration::getMaxGreenColorDistance();
-    cv::Vec3b redColor = Configuration::getRedColor();
-    int maxRedColorDistance = Configuration::getMaxRedColorDistance();
-
-    for (int x = 0; x < shirtMask.cols; x++){
-        for (int y = 0; y < shirtMask.rows; y++){
-            if (backgroundFilteredImage.at<uchar>(y, x) == 0){
-                shirtMask.at<uchar>(y, x) = 0;
             }
             else {
-                cv::Vec3b intensity = imageHue.at<cv::Vec3b>(y, x);
-
-                if (intensity[0] > 15 && intensity[0] < 95 && intensity[1] > 55 &&  intensity[1] < 125 && intensity[2] < 100){
-                    shirtMask.at<uchar>(y, x) = 255;
-                }
-                else{
-                    if ((intensity[0] < 10 || intensity[0] > 250 && intensity[1] > 120) ){
-                        shirtMask.at<uchar>(y, x) = 255;
-                    }
-                    else{
-                        shirtMask.at<uchar>(y, x) = 0;
-                    }
-                }
-            }
-        }
-    }
-    cv::Mat shirtMask2;
-    int dilateSizeShirt = 1;
-    cv::Mat dilateElementShirt = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(2*dilateSizeShirt + 1, 2*dilateSizeShirt + 1), cv::Point(dilateSizeShirt, dilateSizeShirt));
-    cv::dilate(shirtMask, shirtMask2, dilateElementShirt);
-
-    // GET SHIRT CONNECTED COMPONENTS
-
-    std::vector<std::vector<cv::Point> > shirtContours;
-    std::vector<cv::Vec4i> shirtHierarchy;
-
-    findContours(shirtMask2.clone(), shirtContours, shirtHierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE);
-
-    QList<cv::Rect> shirtFilteredRects;
-    QList<std::vector<cv::Point> > shirtFilteredContours;
-
-    for (unsigned int i = 0; i < shirtContours.size(); i++){
-        cv::Rect rect = minAreaRect(shirtContours[i]).boundingRect();
-        if (rect.width > 40 && rect.height > 50 && rect.width < 130 && rect.height < 200){
-            if (rect.x < 0){
-                rect.x = 0;
-            }
-            if (rect.y < 0){
-                rect.y = 0;
-            }
-
-            if (rect.x + rect.width > shirtMask2.cols){
-                rect.x = shirtMask2.cols - rect.width;
-            }
-            if (rect.y + rect.height > shirtMask2.rows){
-                rect.y = shirtMask2.rows - rect.height;
-            }
-
-            shirtFilteredRects.push_back(rect);
-            shirtFilteredContours.push_back(shirtContours[i]);
-        }
-    }
-    // just to display the image
-
-    cv::Mat shirtFilteredImage = shirtMask2.clone();
-
-    for (int x = 0; x < shirtFilteredImage.cols; x++){
-        for (int y = 0; y < shirtFilteredImage.rows; y++){
-            if (shirtFilteredImage.at<uchar>(y, x) == 255){
-                shirtFilteredImage.at<uchar>(y, x) = 0;
-                for (int i = 0; i < shirtFilteredContours.size(); i++){
-                    if (pointPolygonTest(shirtFilteredContours[i], cv::Point2f(x, y), true) >= 5){
-                        shirtFilteredImage.at<uchar>(y, x) = 255;
-                    }
-                }
+                backgroundFilteredImageColor.at<cv::Vec3b>(y,x) = black;
             }
         }
     }
 
-
-    // EXTRACT WHITE PIXELS (NUMBERS)
-    cv::Vec3b numberColor = Configuration::getNumberColor();
-    int maxNumberColorDistance = Configuration::getMaxNumberColorDistance();
-
-    for (int x = 0; x < grayScaleImage.cols; x++){
-        for (int y = 0; y < grayScaleImage.rows; y++){
-            if (backgroundMask2.at<uchar>(y, x) == 0){
-                grayScaleImage.at<uchar>(y, x) = 0;
-            }
-            else {
-                cv::Vec3b intensity = imageHue.at<cv::Vec3b>(y, x);
-                cv::Vec3b bgr = image.at<cv::Vec3b>(y, x);
-
-                if ((intensity[0] < 25 && intensity[1] > 40 && intensity[1] < 110 && intensity[2] > 80 && (bgr[2] - bgr[1]) < 40) || (intensity[0] < 25 && intensity[1] < 90 && intensity[2] > 80)){
-                    grayScaleImage.at<uchar>(y, x) = 255;
-                }
-                else {
-                    grayScaleImage.at<uchar>(y, x) = 0;
-                }
-            }
-        }
-    }
-
-    cv::Mat grayScaleImage3 = grayScaleImage.clone();
-
-    for (int x = 0; x < grayScaleImage3.cols; x++){
-        for (int y = 0; y < grayScaleImage3.rows; y++){
-            if (grayScaleImage3.at<uchar>(y, x) == 255){
-                grayScaleImage3.at<uchar>(y, x) = 0;
-                for (int i = 0; i < shirtFilteredContours.size(); i++){
-                    if (pointPolygonTest(shirtFilteredContours[i], cv::Point2f(x,y), true) >= 5){
-                        grayScaleImage3.at<uchar>(y, x) = 255;
-                    }
-                }
-            }
-        }
-    }
-
-    cv::Mat grayScaleImage4 = closeGaps(grayScaleImage3, 1, 0.6);
-
-    cv::Mat grayScaleImage5 = grayScaleImage4.clone();
-
-    /*for (int x = 0; x < grayScaleImage5.cols; x++){
-        for (int y = 0; y < grayScaleImage5.rows; y++){
-            if (grayScaleImage5.at<uchar>(y, x) == 255 && sobelImage.at<uchar>(y, x) == 255){
-                grayScaleImage5.at<uchar>(y, x) = 0;
-            }
-        }
-    }
-
-    grayScaleImage5 = closeGaps(grayScaleImage5, 2, 0.8);*/
-
-    //GaussianBlur(grayScaleImage, grayScaleImage, cv::Size(7, 7), 0, 0);
-
-    // GET CONNECTED COMPONENTS
-
-    std::vector<std::vector<cv::Point> > contours;
-    std::vector<cv::Vec4i> hierarchy;
-
-    findContours(grayScaleImage5.clone(), contours, hierarchy, CV_RETR_EXTERNAL , CV_CHAIN_APPROX_NONE);
-
-    QList<cv::Rect> filteredRects;
-    QList<std::vector<cv::Point> > filteredContours;
-    QList<cv::Mat> possibleNumbers;
-
-    for (unsigned int i = 0; i < contours.size(); i++){
-        cv::Rect rect = minAreaRect(contours[i]).boundingRect();
-        double ratio = (double) rect.width / rect.height;
-        if (rect.width > 10 && rect.height > 15 && rect.width < 40 && rect.height < 40  && ratio > 0.5 && ratio < 1.5){
-            if (rect.x < 0){
-                rect.x = 0;
-            }
-            if (rect.y < 0){
-                rect.y = 0;
-            }
-
-            if (rect.x + rect.width > grayScaleImage5.cols){
-                rect.x = grayScaleImage5.cols - rect.width;
-            }
-            if (rect.y + rect.height > grayScaleImage5.rows){
-                rect.y = grayScaleImage5.rows - rect.height;
-            }
-            cv::Mat temp = grayScaleImage5(rect);
-            cv::Scalar tempVal = mean(temp);
-            uchar meanVal = tempVal.val[0];
-
-            if (meanVal > 40 && meanVal < 190){
-                possibleNumbers.push_back(temp);
-
-                filteredRects.push_back(rect);
-                filteredContours.push_back(contours[i]);
-            }
-        }
-    }
-
-    // just to display the image
-
-    cv::Mat grayScaleFilteredComponentsImage = grayScaleImage5.clone();
-
-    for (int x = 0; x < grayScaleFilteredComponentsImage.cols; x++){
-        for (int y = 0; y < grayScaleFilteredComponentsImage.rows; y++){
-            if (grayScaleFilteredComponentsImage.at<uchar>(y, x) == 255){
-                grayScaleFilteredComponentsImage.at<uchar>(y, x) = 0;
-                for (int i = 0; i < filteredContours.size(); i++){
-                    if (pointPolygonTest(filteredContours[i], cv::Point2f(x,y), true ) >= 0){
-                        grayScaleFilteredComponentsImage.at<uchar>(y, x) = 255;
-                    }
-                }
-            }
-        }
-    }
-
-
-    // GET THE ACTUAL NUMBER
-
-
-    cv::Size temSize(tem->getWidth(), tem->getHeigth());
-    QList<cv::Mat> skeletons;
-    QList<QList<int> > listPossibleNumbers;
-    cv::Mat finalImage = image;
-
-    Output* output = new Output(finalImage, tem);
-    QMap<long, double> correlations; // first, connected component, then template, then rotation
-
-
-    for (int i = 0; i < filteredRects.size(); i++){
-        //qDebug() << filteredRects[i].width << "  -  " << filteredRects[i].height << "  -  " << filteredRects[i].x << "  -  " << filteredRects[i].y;
-
-        cv::Mat temp = grayScaleImage5(filteredRects[i]).clone();
-
-        for (int x = 0; x < temp.cols; x++){
-            for (int y = 0; y < temp.rows; y++){
-                if (temp.at<uchar>(y, x) == 255){
-                    if (pointPolygonTest(filteredContours[i], cv::Point2f(x + filteredRects[i].x, y + filteredRects[i].y), true) < 0){
-                        temp.at<uchar>(y, x) = 0;
-                    }
-                }
-            }
-        }
-
-        // rotate the contour
-        cv::RotatedRect rect = minAreaRect(filteredContours[i]);
-        rect.center.x = temp.cols/2;
-        rect.center.y = temp.rows/2;
-
-        float angle = rect.angle;
-
-        cv::Size rectSize = rect.size;
-        if (rect.angle <= -35) {
-            angle += 90.0;
-            cv::swap(rectSize.width, rectSize.height);
-        }
-        cv::Mat rotationMatrix = cv::getRotationMatrix2D(rect.center, angle, 1.0);
-        cv::Mat rotated, cropped;
-        cv::warpAffine(temp, rotated, rotationMatrix, temp.size(), cv::INTER_CUBIC);
-        cv::getRectSubPix(rotated, rectSize, rect.center, cropped);
-
-        cv::resize(cropped, possibleNumbers[i], temSize);
-
-        threshold(possibleNumbers[i], possibleNumbers[i], 127, 255, cv::THRESH_BINARY);
-
-        skeletons.push_back(thinningGuoHall(possibleNumbers[i]));
-        cv::imwrite(("temp/" + QString::number(i) + ".png").toStdString(), skeletons[skeletons.size()-1]);
-
-        Skeleton ske(skeletons[skeletons.size()-1], possibleNumbers[i]);
-        listPossibleNumbers.push_back(ske.possibleNumbers(digitsOnField));
-
-        //qDebug() << ske.listJunctions.size();
-
-        //qDebug() << ske.listHoles.size();
-
-        for (int j = 0; j < TEMPLATES_COUNT; j++){
-            int index = 0;
-            for (int angle = -ROTATION_MAX; angle <= ROTATION_MAX; angle+= ROTATION_STEP){
-                correlations.insert(i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index, 1.0);
-                index++;
-            }
-        }
-    }
-
-
-    for (int i = 0; i < filteredRects.size(); i++){
-        if (listPossibleNumbers[i].size() == 1){
-            correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + 0 * ROTATION_COUNT + listPossibleNumbers[i][0]] = 100.0;
-        }
-    }
-
-    for (int i = 0; i < filteredRects.size(); i++){
-        if (listPossibleNumbers[i].size() > 1){
-            int index = 0;
-            for (int angle = -ROTATION_MAX; angle <= ROTATION_MAX; angle+= ROTATION_STEP){
-
-
-                cv::Mat rotatedImage;
-
-                if (modules[CENTER_MASS] > 0 || modules[HALVES_CENTER_MASS_VERTI] > 0 || modules[HALVES_CENTER_MASS_HORI] > 0){
-                    cv::Point2f center(possibleNumbers[i].cols/2.0F, possibleNumbers[i].rows/2.0F);
-                    cv::Mat rotMat = getRotationMatrix2D(center, angle, 1.0);
-                    cv::warpAffine(possibleNumbers[i], rotatedImage, rotMat, possibleNumbers[i].size());
-                }
-
-                if (modules[CENTER_MASS] > 0){
-                    cv::Point2f massCenter = getMassCenterFromImage(rotatedImage);
-
-                    for (int j = 0; j < TEMPLATES_COUNT; j++){
-                        double dist = cv::norm(massCenter - tem->getMassCenter(j));
-
-                        correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index] += modules[CENTER_MASS] / (dist + 0.1);
-                    }
-                }
-
-                if (modules[HALVES_CENTER_MASS_VERTI] > 0){
-                    cv::Mat firstHalf = cv::Mat(rotatedImage.clone(), cv::Rect(0, 0, rotatedImage.cols/2, rotatedImage.rows));
-                    cv::Mat secondHalf = cv::Mat(rotatedImage.clone(), cv::Rect(rotatedImage.cols/2, 0, rotatedImage.cols/2, rotatedImage.rows));
-
-                    cv::Point2f massCenter1h = getMassCenterFromImage(firstHalf);
-                    cv::Point2f massCenter2h = getMassCenterFromImage(secondHalf);
-
-                    for (int j = 0; j < TEMPLATES_COUNT; j++){
-                        double dist1h = cv::norm(massCenter1h - tem->getHalfMassCenter(0, j));
-                        double dist2h = cv::norm(massCenter2h - tem->getHalfMassCenter(1, j));
-
-                        correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index] += modules[HALVES_CENTER_MASS_VERTI] / (dist1h + dist2h + 0.1);
-                    }
-                }
-
-                if (modules[HALVES_CENTER_MASS_HORI] > 0){
-                    cv::Mat firstHalfHori = cv::Mat(rotatedImage.clone(), cv::Rect(0, 0, rotatedImage.cols, rotatedImage.rows/2));
-                    cv::Mat secondHalfHori = cv::Mat(rotatedImage.clone(), cv::Rect(0, rotatedImage.rows/2, rotatedImage.cols, rotatedImage.rows/2));
-
-                    cv::Point2f massCenter1hHori = getMassCenterFromImage(firstHalfHori);
-                    cv::Point2f massCenter2hHori = getMassCenterFromImage(secondHalfHori);
-
-                    for (int j = 0; j < TEMPLATES_COUNT; j++){
-                        double dist1hHori = cv::norm(massCenter1hHori - tem->getHalfMassCenterHori(0, j));
-                        double dist2hHori = cv::norm(massCenter2hHori - tem->getHalfMassCenterHori(1, j));
-
-                        correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index] += modules[HALVES_CENTER_MASS_HORI] / (dist1hHori + dist2hHori + 0.1);
-                    }
-                }
-
-                index++;
-            }
-        }
-    }
-
-    for (int i = 0; i < filteredRects.size(); i++){
-        if (listPossibleNumbers[i].size() > 1){
-            for (int j = 0; j < TEMPLATES_COUNT; j++){
-                if (listPossibleNumbers[i].contains(j)) {
-                    int index = 0;
-                    for (int angle = -ROTATION_MAX; angle <= ROTATION_MAX; angle+= ROTATION_STEP){
-
-                        cv::Point2f center(possibleNumbers[i].cols/2.0F, possibleNumbers[i].rows/2.0F);
-                        cv::Mat rotMat = getRotationMatrix2D(center, angle, 1.0);
-                        cv::Mat rotatedImage;
-                        cv::warpAffine(possibleNumbers[i], rotatedImage, rotMat, possibleNumbers[i].size());
-
-                        cv::Mat result1;
-                        result1.create(1, 1, CV_8UC1);
-                        cv::Mat result2;
-                        result2.create(1, 1, CV_8UC1);
-                        cv::Mat result3;
-                        result3.create(1, 1, CV_8UC1);
-
-                        matchTemplate(rotatedImage, tem->getTemplate(j), result1, CV_TM_CCOEFF_NORMED);
-                        matchTemplate(rotatedImage, tem->getTemplate(j), result2, CV_TM_CCORR_NORMED);
-                        matchTemplate(rotatedImage, tem->getTemplate(j), result3, CV_TM_SQDIFF_NORMED);
-
-                        correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index] += 7 * result1.at<uchar>(0,0);
-                        index++;
-                    }
-                }
-            }
-        }
-    }
-
-    for (int i = 0; i < filteredRects.size(); i++){
-        int index = 0;
-        for (int angle = -ROTATION_MAX; angle <= ROTATION_MAX; angle+= ROTATION_STEP){
-            cv::Point2f center(possibleNumbers[i].cols/2.0F, possibleNumbers[i].rows/2.0F);
-            cv::Mat rotMat = getRotationMatrix2D(center, angle, 1.0);
-            cv::Mat rotatedImage;
-            cv::warpAffine(possibleNumbers[i], rotatedImage, rotMat, possibleNumbers[i].size());
-
-            Histogram hori(rotatedImage.cols);
-            Histogram verti(rotatedImage.rows);
-
-            for (int x = 0; x < rotatedImage.cols; x++){
-                for (int y = 0; y < rotatedImage.rows; y++){
-
-                    hori.add(x, rotatedImage.at<uchar>(y, x)/255.0);
-                    verti.add(y, rotatedImage.at<uchar>(y, x)/255.0);
-                }
-            }
-
-            for (int j = 0; j < TEMPLATES_COUNT; j++){
-                if (listPossibleNumbers[i].contains(j)) {
-                    correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index] += modules[HISTOGRAMS] * tem->getHistoHori(j)->compare(hori);
-                    correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index] += modules[HISTOGRAMS] * tem->getHistoVerti(j)->compare(verti);
-                }
-            }
-
-            index++;
-        }
-    }
-
-    //qDebug() << correlations[0][5][3];
-
-    for (int i = 0; i < filteredRects.size(); i++){
-        double max = 0;
-        int maxIndex = -1;
-
-        for (int j = 0; j < TEMPLATES_COUNT; j++){
-            int index = 0;
-            for (int angle = -ROTATION_MAX; angle <= ROTATION_MAX; angle+= ROTATION_STEP){
-                //qDebug() << i << " - " << j << " - " << index << " : " << i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index;
-                if (correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index] > max){
-                    max = correlations[i * TEMPLATES_COUNT * ROTATION_COUNT + j * ROTATION_COUNT + index];
-                    maxIndex = j;
-                }
-                index++;
-            }
-        }
-
-        if (maxIndex != -1){
-            output->addData(filteredRects[i].x, filteredRects[i].y, maxIndex);
-        }
-    }
-
-
-   //_____________________________________________________________________
-
-    int resultWidth =  finalImage.cols - tem->getWidth() + 1;
-    int resultHeight = finalImage.rows - tem->getHeigth() + 1;
-
-    /*cv::Mat results[TEMPLATES_COUNT];
-    double minVals[TEMPLATES_COUNT];
-    double maxVals[TEMPLATES_COUNT];
-    cv::Point matchLocs[TEMPLATES_COUNT];
-
-    for (int i = 0; i < TEMPLATES_COUNT; i++){
-
-        results[i].create(resultHeight, resultWidth, CV_32FC1);
-
-        matchTemplate(finalImage, tem->getTemplate(i), results[i], method);
-        normalize(results[i], results[i], 0, 1, cv::NORM_MINMAX, -1, cv::Mat());
-
-        cv::Point minLoc;
-        cv::Point maxLoc;
-
-        minMaxLoc(results[i], &minVals[i], &maxVals[i], &minLoc, &maxLoc, cv::Mat());
-
-        matchLocs[i] = maxLoc;
-
-        if (method == CV_TM_SQDIFF || method == CV_TM_SQDIFF_NORMED){ // the best match is the min value using these methods
-            matchLocs[i] = minLoc;
-        }
-    }
-
-    for (int i = 0; i < TEMPLATES_COUNT; i++){
-        bool willBeDisplayed = true;
-        for (int j = 0; j < TEMPLATES_COUNT; j++){
-            if (i != j){
-                double dist = sqrt((matchLocs[i].x - matchLocs[j].x)*(matchLocs[i].x - matchLocs[j].x) + (matchLocs[i].y - matchLocs[j].y)*(matchLocs[i].y - matchLocs[j].y));
-
-                if (dist < Configuration::getMinDistanceBetweenNumbers() && (maxVals[i] < maxVals[j] || (maxVals[i] == maxVals[j] && j < i))){
-                    results[i].at<uchar>(matchLocs[i].x, matchLocs[i].y) = 0;
-
-                    cv::Point minLoc;
-                    cv::Point maxLoc;
-                    minMaxLoc(results[i], &minVals[i], &maxVals[i], &minLoc, &maxLoc, cv::Mat());
-                    j = 0; // restart the search
-                }
-            }
-        }
-
-        if (willBeDisplayed){
-            output->addData(matchLocs[i].x, matchLocs[i].y, i);
-        }
-    }*/
+    Output* output = new Output(backgroundFilteredImageColor, tem);
 
     return output;
 }
