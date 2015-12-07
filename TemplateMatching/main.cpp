@@ -32,7 +32,7 @@ int main(int argc, char *argv[]){
 
     // Below is the code to generate the datasets to train the svms
 
-    /*QList<int> all;
+    QList<int> all;
     for (int i = 0; i < 10; i++){
         all.push_back(i);
     }
@@ -43,10 +43,10 @@ int main(int argc, char *argv[]){
             QList<int> numbers;
             numbers.push_back(i);
             numbers.push_back(j);
-            generateDataSet(numbers, 10, 36, 45, "svm/" + QString::number(i) + "-" + QString::number(j) + "/");
+            generateDataSet(numbers, 1, 36, 45, "svm/" + QString::number(i) + "-" + QString::number(j) + "/");
             generateSVM("svm/" + QString::number(i) + "-" + QString::number(j) + "/", M0);
         }
-    }*/
+    }
 
 
     /*QList<int> zeroHole;

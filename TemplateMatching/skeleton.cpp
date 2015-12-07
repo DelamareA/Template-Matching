@@ -612,6 +612,11 @@ QList<double> Skeleton::vectorization(int type) {
         index++;
     }
 
+    for (int i = 0; i < totalCount; i++){
+        result[index] = (total);
+        index++;
+    }
+
     for (int i = 0; i < partCount; i++){
         for (int x = 0; x < PART_X; x++){
             for (int y = 0; y < PART_Y; y++){

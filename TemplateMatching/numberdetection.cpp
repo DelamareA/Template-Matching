@@ -46,8 +46,11 @@ void runOnDataSet(QList<int> digitsOnField){
                 }
             }
 
-            /*cv::imshow("Output", final);
-            cv::waitKey(40000);*/
+            if (i == 1){
+                //cv::imshow("Output", final);
+                //cv::waitKey(40000);
+            }
+
 
             std::vector<std::vector<cv::Point> > contours;
             std::vector<cv::Vec4i> hierarchy;
@@ -87,20 +90,17 @@ void runOnDataSet(QList<int> digitsOnField){
                 float angle = rect.angle;
 
                 cv::Size rectSize = rect.size;
-                if (rect.angle <= -35) {
+                if (rect.angle <= -45) {
                     angle += 90.0;
                     cv::swap(rectSize.width, rectSize.height);
                 }
                 cv::Mat rotationMatrix = getRotationMatrix2D(rect.center, angle, 1.0);
                 cv::Mat rotated, cropped;
-                warpAffine(finalOneContour, rotated, rotationMatrix, finalOneContour.size(), cv::INTER_CUBIC);
+                warpAffine(finalOneContour, rotated, rotationMatrix, cv::Size(finalOneContour.size().width, 2*finalOneContour.size().height), cv::INTER_LANCZOS4);
                 getRectSubPix(rotated, rectSize, rect.center, cropped);
                 rotated.release();
 
-                /*if (j){
-                    cv::imshow("Output", finalOneContour);
-                    cv::waitKey(40000);
-                }*/
+
 
                 cv::Mat resized;
                 cv::resize(cropped, resized, cv::Size(36, 45));
@@ -111,6 +111,11 @@ void runOnDataSet(QList<int> digitsOnField){
 
                 cv::Mat skeleton = thinningGuoHall(resized);
                 Skeleton ske(skeleton, resized);
+
+                if (i == 1){
+                    //cv::imshow("Output", resized);
+                    //cv::waitKey(40000);
+                }
 
                 qDebug() << i << j;
 

@@ -34,19 +34,7 @@ void generateDataSet(QList<int> numbers, int countPerNumber, int width, int heig
             QPainter painter(&pix);
             painter.setPen(QColor(255, 255, 255));
 
-            switch(rand() % 3){
-                default :
-                painter.setFont(QFont("Arial", size));
-                break;
-
-                case 1:
-                painter.setFont(QFont("Arial", size));
-                break;
-
-                case 2:
-                painter.setFont(QFont("Arial", size));
-                break;
-            }
+            painter.setFont(QFont("Arial", size));
 
             painter.translate(width, size);
             //double realAngle = (rand() % 100) - 50;
