@@ -52,8 +52,9 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
 
     findContours(backgroundMask1.clone(), backgroundContours, backgroundHierarchy, CV_RETR_EXTERNAL , CV_CHAIN_APPROX_NONE);
 
-    QList<cv::Rect> backgroundFilteredRects;
-    QList<std::vector<cv::Point> > backgroundFilteredContours;
+    QVector<cv::Rect> backgroundFilteredRects;
+    QVector<std::vector<cv::Point> > backgroundFilteredContours;
+    QVector<cv::Mat> listPlayerImages;
 
     for (unsigned int i = 0; i < backgroundContours.size(); i++){
         cv::Rect rect = minAreaRect(backgroundContours[i]).boundingRect();
@@ -78,6 +79,8 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
 
             backgroundFilteredRects.push_back(rect);
             backgroundFilteredContours.push_back(backgroundContours[i]);
+
+            listPlayerImages.push_back(image(rect));
         }
     }
 
@@ -86,12 +89,11 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
     cv::Mat backgroundFilteredImage = backgroundMask2.clone();
     cv::Mat backgroundFilteredImageColor = image.clone();
 
-
     cv::Vec3b black;
     black[0] = 0;
     black[1] = 0;
     black[2] = 0;
-    for (int x = 0; x < backgroundFilteredImage.cols; x++){
+    /*for (int x = 0; x < backgroundFilteredImage.cols; x++){
         for (int y = 0; y < backgroundFilteredImage.rows; y++){
             if (backgroundMask2.at<uchar>(y, x) == 255){
                 backgroundFilteredImage.at<uchar>(y, x) = 0;
@@ -107,9 +109,38 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
                 backgroundFilteredImageColor.at<cv::Vec3b>(y,x) = black;
             }
         }
+    }*/
+
+    for (int i = 0; i < listPlayerImages.size(); i++){
+        for (int x = backgroundFilteredRects[i].x; x < backgroundFilteredRects[i].x + backgroundFilteredRects[i].width; x++){
+            for (int y = backgroundFilteredRects[i].y; y < backgroundFilteredRects[i].y + backgroundFilteredRects[i].height; y++){
+                if (backgroundMask2.at<uchar>(y, x) == 255){
+                    if (!(pointPolygonTest(backgroundFilteredContours[i], cv::Point2f(x, y), true) >= 5 && y >= backgroundFilteredRects[i].y && y < backgroundFilteredRects[i].y + backgroundFilteredRects[i].height)){
+                        listPlayerImages[i].at<cv::Vec3b>(y-backgroundFilteredRects[i].y, x-backgroundFilteredRects[i].x) = black;
+                    }
+                }
+                else {
+                    listPlayerImages[i].at<cv::Vec3b>(y-backgroundFilteredRects[i].y, x-backgroundFilteredRects[i].x) = black;
+                }
+            }
+        }
+        //cv::imshow("Output", listPlayerImages[i]);
+        //cv::waitKey(40000);
     }
 
-    Output* output = new Output(backgroundFilteredImageColor, tem);
+    Output* output = new Output(image, tem);
+
+    QVector<cv::Mat> listPlayerImagesNumbers;
+
+    for (int i = 0; i < listPlayerImages.size(); i++){
+        listPlayerImagesNumbers.push_back(listPlayerImages[i].clone());
+
+        mostProbableNumber(listPlayerImages[i].clone(), digitsOnField);
+
+        //output->addData(backgroundFilteredRects[i].x, backgroundFilteredRects[i].y, mostProbableDigit(listPlayerImages[i].clone(), digitsOnField));
+        //cv::imshow("Output", listPlayerImages[i]);
+        //cv::waitKey(40000);
+    }
 
     return output;
 }

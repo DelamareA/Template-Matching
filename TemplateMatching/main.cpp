@@ -14,7 +14,7 @@ int loadAndRun(QString imagePath, QString videoPath, QString outputVideoPath, bo
 int main(int argc, char *argv[]){
 
     bool isVideo = false;
-    QString imagePath = "screenshot5.png";
+    QString imagePath = "screenshot4.png";
     QString videoPath = "29.mp4";
     QString outputVideoPath = "output.avi";
     QString templatesPath = "templatesNumber4/";

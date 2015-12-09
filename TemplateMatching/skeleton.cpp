@@ -517,8 +517,9 @@ QList<int> Skeleton::possibleNumbers(QList<int> digitsOnField){
         }
     }
     else {
-        int dim = Skeleton::getDim(M0);
 
+
+        int dim = Skeleton::getDim(M0);
         QList<double> vect = vectorization(M0);
 
         float sampleData[dim];
@@ -580,6 +581,8 @@ QList<double> Skeleton::vectorization(int type) {
         result.push_back(0.0001);
     }
 
+
+
     for (int i = 0; i < listLineEnds.size() && i < endCount; i++){
         result[index] = (listLineEnds[i].x);
         index++;
@@ -596,7 +599,7 @@ QList<double> Skeleton::vectorization(int type) {
         index++;
     }
 
-    for (int i = 0; i < listJunctions.size() && i < holeCount; i++){
+    for (int i = 0; i < listHoles.size() && i < holeCount; i++){
         result[index] = (listHoles[i].x);
         index++;
 
@@ -611,6 +614,8 @@ QList<double> Skeleton::vectorization(int type) {
         result[index] = (massCenter.y);
         index++;
     }
+
+
 
     for (int i = 0; i < totalCount; i++){
         result[index] = (total);
