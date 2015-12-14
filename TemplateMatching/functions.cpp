@@ -135,7 +135,7 @@ Output* templateMatching(cv::Mat image, Template* tem, int modules[MODULES_COUNT
     for (int i = 0; i < listPlayerImages.size(); i++){
         listPlayerImagesNumbers.push_back(listPlayerImages[i].clone());
 
-        mostProbableNumber(listPlayerImages[i].clone(), digitsOnField);
+        //mostProbableNumber(listPlayerImages[i].clone(), digitsOnField);
 
         //output->addData(backgroundFilteredRects[i].x, backgroundFilteredRects[i].y, mostProbableDigit(listPlayerImages[i].clone(), digitsOnField));
         //cv::imshow("Output", listPlayerImages[i]);
