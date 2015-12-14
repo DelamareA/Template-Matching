@@ -28,7 +28,7 @@
 #define MASS_CENTER_0 0
 #define MASS_CENTER_1 0
 
-#define TOTAL_0 1100
+#define TOTAL_0 0
 #define TOTAL_1 0
 
 #define PARTS_0 1

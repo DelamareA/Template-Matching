@@ -9,28 +9,41 @@ int mostProbableNumber(cv::Mat image, QList<int> digitsOnField){
     cvtColor(blurredImage, hsv, CV_BGR2HSV);
     cvtColor(image, final, CV_BGR2GRAY);
 
+    cv::Mat colorSeg;
+    pyrMeanShiftFiltering(blurredImage, colorSeg, 20, 20, 3);
+
+    cv::Mat colorSegHSV;
+    cvtColor(colorSeg, colorSegHSV, CV_BGR2HSV);
 
     int maxV = 0;
-    long mean = 0;
+    int maxS = 0;
+    long meanV = 0;
+    long meanS = 0;
     for (int x = 0; x < image.cols; x++){
         for (int y = 0; y < image.rows; y++){
             cv::Vec3b intensity = hsv.at<cv::Vec3b>(y, x);
 
-            mean += intensity[2];
+            meanV += intensity[2];
+            meanS += intensity[1];
 
             if (intensity[2] > maxV){
                 maxV = intensity[2];
             }
+
+            if (intensity[1] > maxS){
+                maxS = intensity[1];
+            }
         }
     }
 
-    mean /= (image.cols * image.rows);
+    meanV /= (image.cols * image.rows);
+    meanS /= (image.cols * image.rows);
 
     for (int x = 0; x < image.cols; x++){
         for (int y = 0; y < image.rows; y++){
             cv::Vec3b intensity = hsv.at<cv::Vec3b>(y, x);
 
-            if (intensity[2] > maxV * 0.6){
+            if (intensity[2] > maxV * 0.7){
                 final.at<uchar>(y, x) = 255;
             }
             else {
@@ -38,6 +51,7 @@ int mostProbableNumber(cv::Mat image, QList<int> digitsOnField){
             }
         }
     }
+
 
     //cv::imshow("Output", final);
     //cv::waitKey(40000);
@@ -52,7 +66,7 @@ int mostProbableNumber(cv::Mat image, QList<int> digitsOnField){
 
     for (unsigned int i = 0; i < contours.size(); i++){
         cv::Rect rect = minAreaRect(contours[i]).boundingRect();
-        if (rect.width > 13 && rect.width < 40 && rect.height > 15 && rect.height < 40){
+        if (rect.width > 10 && rect.width < 40 && rect.height > 15 && rect.height < 40){
 
             if (rect.x < 0){
                 rect.x = 0;
@@ -113,63 +127,59 @@ int mostProbableNumber(cv::Mat image, QList<int> digitsOnField){
                 }
             }
         }
-        qDebug() << digitImage.cols << digitImage.rows;
-        cv::imshow("Output", digitImage);
-        cv::waitKey(40000);
 
-        mostProbableDigit(digitImage, digitsOnField);
+        //qDebug() << digitImage.cols << digitImage.rows;
+        //cv::imshow("Output", digitImage);
+        //cv::waitKey(40000);
+
+        std::vector<cv::Point> shiftedContour = sortedContours[i];
+
+        for (int j = 0; j < shiftedContour.size(); j++){
+            shiftedContour[j].x -= sortedRects[i].x;
+            shiftedContour[j].y -= sortedRects[i].y;
+        }
+
+        qDebug() << mostProbableDigit(digitImage, digitsOnField, shiftedContour);
+
+        return mostProbableDigit(digitImage, digitsOnField, shiftedContour);
     }
 
     return 0;
 }
 
-int mostProbableDigit(cv::Mat numberImage, QList<int> digitsOnField){
-    std::vector<std::vector<cv::Point> > contours;
-    std::vector<cv::Vec4i> hierarchy;
+int mostProbableDigit(cv::Mat numberImage, QList<int> digitsOnField, std::vector<cv::Point> contour){
 
-    findContours(numberImage.clone(), contours, hierarchy, CV_RETR_EXTERNAL , CV_CHAIN_APPROX_NONE);
+    cv::RotatedRect rect = cv::minAreaRect(contour);
 
-    if (contours.size() < 1){
-        qDebug() << "Error : 0 contour found";
+    float angle = rect.angle;
+
+    cv::Size rectSize = rect.size;
+    if (rect.angle <= -45) {
+        angle += 90.0;
+        cv::swap(rectSize.width, rectSize.height);
+    }
+
+    cv::Mat rotationMatrix = getRotationMatrix2D(rect.center, angle, 1.0);
+    cv::Mat rotated = numberImage.clone();
+    cv::Mat cropped = numberImage.clone();
+
+    warpAffine(numberImage, rotated, rotationMatrix, cv::Size(numberImage.size().width, 2*numberImage.size().height), cv::INTER_LANCZOS4);
+    getRectSubPix(rotated, rectSize, rect.center, cropped);
+
+    cv::Mat resized;
+    cv::resize(cropped, resized, cv::Size(36, 45));
+
+    cv::Mat skeleton = thinningGuoHall(resized);
+    Skeleton ske(skeleton, resized);
+
+    QVector<int> possibleDigits = ske.possibleNumbers(digitsOnField).toVector();
+
+    if (possibleDigits.empty()){
+        return 0;
     }
     else {
-        //cv::imshow("Output", numberImage);
-        //cv::waitKey(40000);
-
-        cv::RotatedRect rect = cv::minAreaRect(contours[0]);
-
-        float angle = rect.angle;
-
-        cv::Size rectSize = rect.size;
-        if (rect.angle <= -45) {
-            angle += 90.0;
-            cv::swap(rectSize.width, rectSize.height);
-        }
-
-        cv::Mat rotationMatrix = getRotationMatrix2D(rect.center, angle, 1.0);
-        cv::Mat rotated = numberImage.clone();
-        cv::Mat cropped = numberImage.clone();
-
-        warpAffine(numberImage, rotated, rotationMatrix, cv::Size(numberImage.size().width, 2*numberImage.size().height), cv::INTER_LANCZOS4);
-        getRectSubPix(rotated, rectSize, rect.center, cropped);
-
-        cv::Mat resized= numberImage.clone();
-        cv::resize(cropped, resized, cv::Size(36, 45));
-
-        cv::Mat skeleton = thinningGuoHall(resized);
-        Skeleton ske(skeleton, resized);
-
-        QVector<int> possibleDigits = ske.possibleNumbers(digitsOnField).toVector();
-
-        if (possibleDigits.empty()){
-            return 0;
-        }
-        else {
-            return possibleDigits[0];
-        }
+        return possibleDigits[0];
     }
-
-    return 0;
 }
 
 void runOnDataSet(QList<int> digitsOnField){

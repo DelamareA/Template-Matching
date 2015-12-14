@@ -334,11 +334,11 @@ Skeleton::Skeleton(cv::Mat skeletonizedImage, cv::Mat normalImage){
         }
     } while (!done);
 
-    massCenter = getMassCenter(skeletonizedImage);
+    massCenter = getMassCenter(normalImage);
 
-    total = getCount(skeletonizedImage);
+    total = getCount(normalImage);
 
-    setParts(skeletonizedImage);
+    setParts(normalImage);
 
     listLineEnds = sort(listLineEnds);
     listHoles = sort(listHoles);
@@ -675,7 +675,8 @@ double Skeleton::getCount(cv::Mat ske){
 
     double tempCount = count / (ske.cols * ske.rows);
 
-    return min(tempCount * 20, 1.0);
+    //return min(tempCount * 20, 1.0);
+    return tempCount;
 }
 
 void Skeleton::setParts(cv::Mat ske){
@@ -700,12 +701,12 @@ void Skeleton::setParts(cv::Mat ske){
         }
     }
 
-    // increase value, for better detection results, otherwisw, each number is very close to 0
-    for (int x = 0; x < PART_X; x++){
+    // increase value, for better detection results, otherwise, each number is very close to 0
+    /*for (int x = 0; x < PART_X; x++){
         for (int y = 0; y < PART_Y; y++){
             parts[x][y] = min(parts[x][y] * 20, 1.0);
         }
-    }
+    }*/
 }
 
 
